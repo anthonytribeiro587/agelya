@@ -1,0 +1,55 @@
+{
+  "name": "Agelya — Agenda e Gestão",
+  "short_name": "Agelya",
+  "description": "Agenda, clientes, serviços e relacionamento para beleza e bem-estar",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+  "orientation": "any",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "description": "Ver e gerenciar atendimentos",
+      "url": "/booking",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Clientes",
+      "short_name": "Clientes",
+      "description": "Cadastro e histórico de clientes",
+      "url": "/crm",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Caixa",
+      "short_name": "Caixa",
+      "description": "Registrar recebimentos e vendas",
+      "url": "/pos",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["business", "productivity", "health"]
+}
