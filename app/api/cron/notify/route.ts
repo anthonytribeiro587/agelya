@@ -143,13 +143,13 @@ export async function GET(req: NextRequest) {
     const time = formatEmailTime(a.starts_at, tz)
 
     // Telegram → клиенту (владельцу reminder не нужен — он уже получил уведомление при создании записи)
-    if (false && biz?.telegram_bot_token && client?.telegram_id) {
+    if (biz && false && biz.telegram_bot_token && client?.telegram_id) {
       await sendTelegramMessage(biz.telegram_bot_token, client.telegram_id,
         tgTplReminderClient({ clientName: client.name, serviceName: service?.name ?? '—', date, time, businessName: biz.name, address: biz.address ?? undefined })
       )
     }
     // Viber → клиенту
-    if (false && biz?.viber_bot_token && client?.viber_user_id) {
+    if (biz && false && biz.viber_bot_token && client?.viber_user_id) {
       await sendViberMessage(biz.viber_bot_token, client.viber_user_id,
         viberTplReminderClient({ clientName: client.name, serviceName: service?.name ?? '—', date, time, businessName: biz.name, address: biz.address ?? undefined })
       )
@@ -210,13 +210,13 @@ export async function GET(req: NextRequest) {
     const time = formatEmailTime(a.starts_at, tz)
 
     // Telegram → клиенту (владельцу reminder не нужен — он уже получил уведомление при создании записи)
-    if (false && biz?.telegram_bot_token && client?.telegram_id) {
+    if (biz && false && biz.telegram_bot_token && client?.telegram_id) {
       await sendTelegramMessage(biz.telegram_bot_token, client.telegram_id,
         tgTplReminderClient({ clientName: client.name, serviceName: service?.name ?? '—', date, time, businessName: biz.name, address: biz.address ?? undefined, isOneHour: true })
       )
     }
     // Viber → клиенту
-    if (false && biz?.viber_bot_token && client?.viber_user_id) {
+    if (biz && false && biz.viber_bot_token && client?.viber_user_id) {
       await sendViberMessage(biz.viber_bot_token, client.viber_user_id,
         viberTplReminderClient({ clientName: client.name, serviceName: service?.name ?? '—', date, time, businessName: biz.name, address: biz.address ?? undefined, isOneHour: true })
       )
@@ -270,25 +270,25 @@ export async function GET(req: NextRequest) {
     const bookingUrl = biz?.slug ? `${APP_URL}/book/${biz.slug}` : undefined
 
     // Telegram → владельцу
-    if (false && biz?.telegram_bot_token && biz?.telegram_chat_id) {
+    if (biz && false && biz.telegram_bot_token && biz?.telegram_chat_id) {
       await sendTelegramMessage(biz.telegram_bot_token, biz.telegram_chat_id,
         tplThankYou({ clientName: client?.name ?? 'Walk-in', serviceName: service?.name ?? '—' })
       )
     }
     // Telegram → клиенту
-    if (false && biz?.telegram_bot_token && client?.telegram_id) {
+    if (biz && false && biz.telegram_bot_token && client?.telegram_id) {
       await sendTelegramMessage(biz.telegram_bot_token, client.telegram_id,
         tgTplThankYouClient({ clientName: client.name, serviceName: service?.name ?? '—', businessName: biz.name, bookingUrl })
       )
     }
     // Viber → владельцу
-    if (false && biz?.viber_bot_token && biz?.viber_chat_id) {
+    if (biz && false && biz.viber_bot_token && biz?.viber_chat_id) {
       await sendViberMessage(biz.viber_bot_token, biz.viber_chat_id,
         viberTplThankYou({ clientName: client?.name ?? 'Walk-in', serviceName: service?.name ?? '—' })
       )
     }
     // Viber → клиенту
-    if (false && biz?.viber_bot_token && client?.viber_user_id) {
+    if (biz && false && biz.viber_bot_token && client?.viber_user_id) {
       await sendViberMessage(biz.viber_bot_token, client.viber_user_id,
         viberTplThankYouClient({ clientName: client.name, serviceName: service?.name ?? '—', businessName: biz.name, bookingUrl })
       )
@@ -335,19 +335,19 @@ export async function GET(req: NextRequest) {
     const bookingUrl = biz?.slug ? `${APP_URL}/book/${biz.slug}` : undefined
 
     // Telegram → владельцу
-    if (false && biz?.telegram_bot_token && biz?.telegram_chat_id) {
+    if (biz && false && biz.telegram_bot_token && biz?.telegram_chat_id) {
       await sendTelegramMessage(biz.telegram_bot_token, biz.telegram_chat_id,
         tgTplReactivation({ clientName: c.name })
       )
     }
     // Telegram → клиенту
-    if (false && biz?.telegram_bot_token && c.telegram_id) {
+    if (biz && false && biz.telegram_bot_token && c.telegram_id) {
       await sendTelegramMessage(biz.telegram_bot_token, c.telegram_id,
         tgTplReactivationClient({ clientName: c.name, businessName: biz.name, bookingUrl })
       )
     }
     // Viber → клиенту
-    if (false && biz?.viber_bot_token && c.viber_user_id) {
+    if (biz && false && biz.viber_bot_token && c.viber_user_id) {
       await sendViberMessage(biz.viber_bot_token, c.viber_user_id,
         viberTplReactivation({ clientName: c.name, businessName: biz.name, bookingUrl })
       )
@@ -391,19 +391,19 @@ export async function GET(req: NextRequest) {
     const bookingUrl = biz?.slug ? `${APP_URL}/book/${biz.slug}` : undefined
 
     // Telegram → владельцу
-    if (false && biz?.telegram_bot_token && biz?.telegram_chat_id) {
+    if (biz && false && biz.telegram_bot_token && biz?.telegram_chat_id) {
       await sendTelegramMessage(biz.telegram_bot_token, biz.telegram_chat_id,
         tgTplBirthday({ clientName: c.name })
       )
     }
     // Telegram → клиенту
-    if (false && biz?.telegram_bot_token && c.telegram_id) {
+    if (biz && false && biz.telegram_bot_token && c.telegram_id) {
       await sendTelegramMessage(biz.telegram_bot_token, c.telegram_id,
         tgTplBirthdayClient({ clientName: c.name, businessName: biz.name, bookingUrl })
       )
     }
     // Viber → клиенту
-    if (false && biz?.viber_bot_token && c.viber_user_id) {
+    if (biz && false && biz.viber_bot_token && c.viber_user_id) {
       await sendViberMessage(biz.viber_bot_token, c.viber_user_id,
         viberTplBirthday({ clientName: c.name, businessName: biz.name, bookingUrl })
       )
