@@ -15,14 +15,11 @@ const withPWA = require('next-pwa')({
   register: true,
   skipWaiting: true,
   disable: disablePWA,
-  // Prevent caching Next.js internal manifests (causes build errors with App Router)
   buildExcludes: [/middleware-manifest\.json$/, /app-build-manifest\.json$/],
-  // Offline fallback: serve /offline when a navigation request fails
   fallbacks: {
     document: '/offline',
   },
   runtimeCaching: [
-    // Cache Google Fonts
     {
       urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
       handler: 'CacheFirst',
@@ -31,7 +28,6 @@ const withPWA = require('next-pwa')({
         expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
       },
     },
-    // Cache static assets (JS, CSS, images)
     {
       urlPattern: /\/_next\/static\/.*/i,
       handler: 'CacheFirst',
@@ -40,25 +36,13 @@ const withPWA = require('next-pwa')({
         expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
       },
     },
-    // Cache Supabase API responses (stale-while-revalidate for freshness)
-    {
-      urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'supabase-data',
-        networkTimeoutSeconds: 10,
-        expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 },
-      },
-    },
+    // Do not cache Supabase REST/auth responses. They can contain tenant or
+    // client data and should always be obtained from the authenticated network.
   ],
 })
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
-// Build the list of allowed origins for Server Actions.
-// Always includes localhost (dev) and trypronto.app (SaaS).
-// Self-hosted: NEXT_PUBLIC_APP_URL is added automatically so server
-// actions work when the app is deployed on a custom domain.
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 const appHost = appUrl ? appUrl.replace(/^https?:\/\//, '').replace(/\/$/, '') : null
 const allowedOrigins = ['localhost:3000', '*.trypronto.app']
@@ -66,9 +50,18 @@ if (appHost && !allowedOrigins.includes(appHost)) {
   allowedOrigins.push(appHost)
 }
 
+const securityHeaders = [
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+  { key: 'X-DNS-Prefetch-Control', value: 'off' },
+]
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone', // required for Docker multi-stage build
+  output: 'standalone',
   experimental: {
     serverActions: {
       allowedOrigins,
@@ -80,10 +73,17 @@ const nextConfig = {
       { protocol: 'https', hostname: '*.r2.cloudflarestorage.com' },
     ],
   },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: securityHeaders,
+      },
+    ]
+  },
   async redirects() {
     const domain = process.env.APP_DOMAIN
     if (!domain) return []
-    // Redirect www → non-www (301 permanent) to fix Soft 404 in Google Search Console
     return [
       {
         source: '/:path*',
