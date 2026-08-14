@@ -2,10 +2,12 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import DOMPurify from 'isomorphic-dompurify'
 
-function sanitize(s: string): string {
-  return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
+function sanitizeText(value: string): string {
+  return value
+    .replace(/[<>]/g, '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .trim()
 }
 
 export async function completeOnboarding(data: {
@@ -29,15 +31,9 @@ export async function completeOnboarding(data: {
 
   if (!business) redirect('/login')
 
-  // Sanitize and validate text fields
-  const bizName = data.bizName ? sanitize(data.bizName).slice(0, 100) : undefined
-  // serviceName can be empty — the user may have clicked "Skip" on the
-  // first-service step. See the `if (serviceName && data.servicePrice)`
-  // guard below: an empty name (or a name without a price) simply means
-  // no service gets created, which is the intended Skip behaviour.
-  const serviceName = sanitize(data.serviceName).slice(0, 100)
+  const bizName = data.bizName ? sanitizeText(data.bizName).slice(0, 100) : undefined
+  const serviceName = sanitizeText(data.serviceName).slice(0, 100)
 
-  // Server-side slug validation (defence against bypassed client checks)
   const finalSlug = data.slug ?? business.slug
   if (data.slug) {
     if (!/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(data.slug)) {
@@ -56,20 +52,22 @@ export async function completeOnboarding(data: {
     .eq('id', business.id)
 
   if (updateError) {
-    // Most likely a unique constraint violation on slug
     throw new Error(updateError.message)
   }
 
   if (serviceName && data.servicePrice) {
-    await supabase.from('services').insert({
+    const { error: serviceError } = await supabase.from('services').insert({
       business_id: business.id,
       name: serviceName,
       price: data.servicePrice,
       duration_min: data.serviceDuration || 60,
     })
+
+    if (serviceError) {
+      throw new Error(serviceError.message)
+    }
   }
 
-  // If NEXT_PUBLIC_ROOT_DOMAIN is set we're running in SaaS mode → go to subdomain
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN
   if (rootDomain && finalSlug) {
     redirect(`https://${finalSlug}.${rootDomain}/dashboard`)
