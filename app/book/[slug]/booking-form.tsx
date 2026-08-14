@@ -131,16 +131,39 @@ export function PublicBookingForm({ business, services, employees, workingHours,
 
   useEffect(() => {
     const availablePhoneCountries = new Set(getCountries())
-    const localeRegion = navigator.language.split('-')[1]?.toUpperCase() as Country | undefined
-    if (localeRegion && availablePhoneCountries.has(localeRegion)) {
-      setPhoneCountry(localeRegion)
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const brazilTimezones = new Set([
+      'America/Sao_Paulo', 'America/Fortaleza', 'America/Recife', 'America/Bahia',
+      'America/Maceio', 'America/Belem', 'America/Santarem', 'America/Manaus',
+      'America/Boa_Vista', 'America/Cuiaba', 'America/Campo_Grande',
+      'America/Porto_Velho', 'America/Rio_Branco', 'America/Eirunepe',
+      'America/Araguaina', 'America/Noronha',
+    ])
+
+    // Prefer timezone when it clearly identifies the user's current country.
+    // This makes a Brazilian using pt-BR while physically in Australia start on +61.
+    if (tz.startsWith('Australia/')) {
+      setPhoneCountry('AU')
+      return
+    }
+    if (brazilTimezones.has(tz)) {
+      setPhoneCountry('BR')
+      return
+    }
+    if (tz === 'Europe/Lisbon' || tz === 'Atlantic/Madeira' || tz === 'Atlantic/Azores') {
+      setPhoneCountry('PT')
       return
     }
 
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-    if (tz.startsWith('Australia/')) setPhoneCountry('AU')
-    else if (tz === 'Europe/Lisbon' || tz === 'Atlantic/Madeira' || tz === 'Atlantic/Azores') setPhoneCountry('PT')
-    else if (tz.startsWith('America/')) setPhoneCountry('BR')
+    // For other countries, use the first browser language that includes a region.
+    for (const language of navigator.languages) {
+      const match = language.match(/[-_]([A-Za-z]{2})\b/)
+      const region = match?.[1]?.toUpperCase() as Country | undefined
+      if (region && availablePhoneCountries.has(region)) {
+        setPhoneCountry(region)
+        return
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -324,6 +347,9 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   }
 
   const selectedEmployeeObj = employees.find((e) => e.id === selectedEmployee) ?? null
+  const contactValid = Boolean(
+    contact.name.trim() && contact.phone && isValidPhoneNumber(contact.phone)
+  )
 
   // ─── Done screen ──────────────────────────────────────────────────────────
   if (step === 'done') {
@@ -343,7 +369,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
 
         <h2 style={{ fontSize: 20, fontWeight: 500, color: '#2D2926', margin: '0 0 8px' }}>{t('success.heading')}</h2>
         <p style={{ fontSize: 14, color: '#9A8E85', margin: '0 0 4px' }}>
-          {selectedService?.name} · {date} at {time ? formatSlot(time) : ''}
+          {selectedService?.name} · {date} às {time ? formatSlot(time) : ''}
           {selectedEmployeeObj && ` · ${selectedEmployeeObj.name}`}
         </p>
         <p style={{ fontSize: 14, color: '#9A8E85', margin: '0 0 24px' }}>{t('success.body')}</p>
@@ -389,7 +415,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'white', border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 20px', fontSize: 14, color: '#2D2926', textDecoration: 'none', fontWeight: 500 }}
           >
             <CalendarPlus style={{ width: 16, height: 16 }} />
-            Add to Google Calendar
+            Adicionar ao Google Agenda
           </a>
           <button onClick={resetAll}
             style={{ background: 'white', border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 20px', fontSize: 14, color: '#2D2926', cursor: 'pointer', fontWeight: 500 }}>
@@ -406,7 +432,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {/* ── Step 1: Service ───────────────────────────────────────────────── */}
       {step === 'service' && (
         <div>
-          <StepBadge label="Select service" />
+          <StepBadge label="Escolha o serviço" />
           <SectionTitle text={t('selectService.heading')} />
           {services.length === 0 ? (
             <p style={{ fontSize: 14, color: '#9A8E85' }}>{t('selectService.empty')}</p>
@@ -431,7 +457,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {step === 'employee' && selectedService && (
         <div>
           <BackLink label={t('selectEmployee.back')} onClick={handleBackFromEmployee} />
-          <StepBadge label="Choose specialist" />
+          <StepBadge label="Escolha o profissional" />
           <SectionTitle text={t('selectEmployee.heading')} />
           <p style={{ fontSize: 13, color: '#9A8E85', marginTop: -8, marginBottom: 14 }}>{selectedService.name}</p>
 
@@ -461,12 +487,12 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {step === 'datetime' && selectedService && (
         <div>
           <BackLink label={t('datetime.back')} onClick={handleBackFromDatetime} />
-          <StepBadge label="Date & time" />
+          <StepBadge label="Data e horário" />
           <SectionTitle text={t('datetime.heading')} />
 
           {slotTakenError && (
             <div style={{ marginBottom: 16, padding: 12, background: '#FFF8ED', border: '0.5px solid #F5C842', borderRadius: 10, fontSize: 13, color: '#7A5C00' }}>
-              ⚠ This time was just booked by someone else. Please choose a different time.
+              ⚠ Este horário acabou de ser reservado. Escolha outro horário.
             </div>
           )}
 
@@ -492,15 +518,15 @@ export function PublicBookingForm({ business, services, employees, workingHours,
               {loadingSlots ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#9A8E85' }}>
                   <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
-                  Loading available times&hellip;
+                  Carregando horários disponíveis&hellip;
                 </div>
               ) : dayClosed ? (
                 <div style={{ padding: 12, background: '#F5F0EB', borderRadius: 10, fontSize: 14, color: '#9A8E85' }}>
-                  This day is outside working hours. Please choose another date.
+                  Este dia está fora do horário de atendimento. Escolha outra data.
                 </div>
               ) : availableSlots.length === 0 ? (
                 <div style={{ padding: 12, background: '#F5F0EB', borderRadius: 10, fontSize: 14, color: '#9A8E85' }}>
-                  No available times for this day. Please choose another date.
+                  Não há horários disponíveis neste dia. Escolha outra data.
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -592,9 +618,9 @@ export function PublicBookingForm({ business, services, employees, workingHours,
 
           <button
             onClick={submit}
-            disabled={!contact.name || saving}
+            disabled={!contactValid || saving}
             style={{
-              background: (!contact.name || saving) ? '#C4BAB3' : 'var(--brand)',
+              background: (!contactValid || saving) ? '#C4BAB3' : 'var(--brand)',
               color: 'white',
               border: 'none',
               borderRadius: 10,
@@ -603,7 +629,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
               fontWeight: 500,
               width: '100%',
               marginTop: 16,
-              cursor: (!contact.name || saving) ? 'not-allowed' : 'pointer',
+              cursor: (!contactValid || saving) ? 'not-allowed' : 'pointer',
             }}
           >
             {saving ? t('contact.booking') : t('contact.confirm', { price: formatCurrency(selectedService?.price ?? 0, business.currency) })}
