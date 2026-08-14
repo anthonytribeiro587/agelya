@@ -49,7 +49,6 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
   const [error, setError] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Business types where duration doesn't apply (retail/product-based)
   const noDuration = ['cafe']
   const showDuration = !noDuration.includes(bizType)
 
@@ -67,10 +66,9 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
   const steps = [
     t('steps.businessType'),
     t('steps.firstService'),
-    t('steps.notifications'),
+    'WhatsApp',
   ]
 
-  // Debounced slug availability check
   useEffect(() => {
     if (!isSaas) return
 
@@ -102,10 +100,8 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
     }
   }, [slug, isSaas])
 
-  // Run initial check on mount for the pre-filled slug
   useEffect(() => {
     if (!isSaas || !initialSlug) return
-    // Trigger the effect above by keeping slug === initialSlug (already set)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const canContinueStep0 =
@@ -114,7 +110,6 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
   function handleBizNameChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newName = e.target.value
     setBizName(newName)
-    // Auto-generate slug from business name in SaaS mode (until manually edited)
     if (isSaas && !slugManuallyEdited) {
       setSlug(nameToSlug(newName))
     }
@@ -138,7 +133,7 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
         ...(isSaas ? { slug } : {}),
       })
     } catch {
-      setError(t('step2.error'))
+      setError('Não foi possível concluir a configuração. Tente novamente.')
       setSaving(false)
     }
   }
@@ -170,7 +165,6 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
           <p className="text-sm text-gray-500">{t('intro')}</p>
         </div>
 
-        {/* Steps indicator */}
         <div className="flex items-center justify-center gap-3 mb-8">
           {steps.map((s, i) => (
             <div key={s} className="flex items-center gap-2">
@@ -186,13 +180,11 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-          {/* ── Step 0: Business name + type (+ URL in SaaS) ──────────────── */}
           {step === 0 && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('step0.heading')}</h2>
               <p className="text-sm text-gray-500 mb-6">{t('step0.subheading')}</p>
 
-              {/* Business name */}
               <div className="mb-6">
                 <label className="text-xs font-medium text-gray-500 block mb-1">
                   {t('step0.bizNameLabel')}
@@ -219,7 +211,6 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
                 ))}
               </div>
 
-              {/* Slug field — SaaS only */}
               {isSaas && (
                 <div className="mt-6 pt-5 border-t border-gray-100">
                   <label className="text-xs font-medium text-gray-500 block mb-1">
@@ -267,7 +258,6 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
             </div>
           )}
 
-          {/* ── Step 1: First service ──────────────────────────────────────── */}
           {step === 1 && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('step1.heading')}</h2>
@@ -303,36 +293,36 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
             </div>
           )}
 
-          {/* ── Step 2: Notifications ──────────────────────────────────────── */}
           {step === 2 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('step2.heading')}</h2>
-              <p className="text-sm text-gray-500 mb-6">{t('step2.subheading')}</p>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 border border-blue-100">
-                  <div className="text-2xl">✉️</div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{t('step2.emailChannel')}</div>
-                    <div className="text-xs text-gray-500">{t('step2.emailChannelSub')}</div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">WhatsApp</h2>
+              <p className="text-sm text-gray-500 mb-6">
+                A Agelya usará o WhatsApp como canal de comunicação com os clientes. A integração será feita pela Evolution API.
+              </p>
+
+              <div className="p-4 rounded-xl bg-green-50 border border-green-100">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">💬</div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-900">WhatsApp via Evolution API</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      Confirmações, lembretes e mensagens de atendimento poderão ser enviados pelo WhatsApp.
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2">
+                      Você poderá conectar sua instância depois em Configurações → WhatsApp.
+                    </div>
                   </div>
-                  <span className="ml-auto text-xs text-green-600 font-medium">{t('step2.emailChannelStatus')}</span>
-                </div>
-                <div className="flex items-center gap-3 p-4 rounded-xl border border-gray-200">
-                  <div className="text-2xl">📱</div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{t('step2.messengerChannel')}</div>
-                    <div className="text-xs text-gray-500">{t('step2.messengerChannelSub')}</div>
-                  </div>
-                  <span className="ml-auto text-xs text-gray-400">{t('step2.messengerChannelStatus')}</span>
+                  <span className="ml-auto text-xs text-gray-500 whitespace-nowrap">Configurar depois</span>
                 </div>
               </div>
+
               {error && (
                 <div className="mt-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>
               )}
               <div className="flex gap-3 mt-6">
-                <Button variant="outline" onClick={() => setStep(1)} disabled={saving}>{t('step2.back')}</Button>
+                <Button variant="outline" onClick={() => setStep(1)} disabled={saving}>Voltar</Button>
                 <Button className="flex-1" onClick={finish} disabled={saving}>
-                  {saving ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{t('step2.settingUp')}</span> : t('step2.submit')}
+                  {saving ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Finalizando…</span> : 'Ir para o painel →'}
                 </Button>
               </div>
             </div>
