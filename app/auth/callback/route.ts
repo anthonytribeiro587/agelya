@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient, type EmailOtpType } from '@supabase/supabase-js'
 import { slugify } from '@/lib/utils'
+import { safeInternalPath } from '@/lib/safe-redirect'
 import { insertOwnerAsEmployee } from '@/lib/create-business'
 import { NextResponse } from 'next/server'
 
@@ -10,7 +11,7 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
   const tokenHash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
-  const next = searchParams.get('next') ?? '/dashboard'
+  const next = safeInternalPath(searchParams.get('next'))
   const providerError = searchParams.get('error_description') || searchParams.get('error')
 
   if (providerError) {
@@ -61,7 +62,8 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
   const { data: existing } = await admin
