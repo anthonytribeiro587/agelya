@@ -1,51 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { renderAutomationMessage } from '@/lib/automation-message'
 import { sendEvolutionText } from '@/lib/evolution'
 
 // Legacy route name kept so the public booking flow does not break. Agelya now
-// uses this endpoint exclusively for WhatsApp via Evolution API.
-
-function formatDate(iso: string, timezone: string) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: timezone,
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(iso))
-}
-
-function formatTime(iso: string, timezone: string) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(iso))
-}
-
-function bookingConfirmationMessage(opts: {
-  clientName: string
-  serviceName: string
-  date: string
-  time: string
-  businessName: string
-  employeeName?: string
-  address?: string
-}) {
-  const lines = [
-    '✅ *Agendamento confirmado!*',
-    '',
-    `Olá, ${opts.clientName}! Seu horário foi agendado com sucesso.`,
-    '',
-    `📋 Serviço: ${opts.serviceName}`,
-    `📅 Data: ${opts.date}`,
-    `🕐 Horário: ${opts.time}`,
-  ]
-  if (opts.employeeName) lines.push(`👤 Profissional: ${opts.employeeName}`)
-  if (opts.address) lines.push(`📍 ${opts.address}`)
-  lines.push('', `Até lá! — ${opts.businessName}`)
-  return lines.join('\n')
-}
+// uses this endpoint exclusively for the appointment-created WhatsApp automation.
 
 export async function POST(req: NextRequest) {
   try {
@@ -54,50 +13,36 @@ export async function POST(req: NextRequest) {
     if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
-    if (!expectedSecret) {
-      console.warn('[booking/confirm] INTERNAL_API_SECRET is not set.')
-    }
 
     const { appointmentId } = await req.json()
-    if (!appointmentId) {
-      return NextResponse.json({ error: 'missing appointmentId' }, { status: 400 })
-    }
+    if (!appointmentId) return NextResponse.json({ error: 'missing appointmentId' }, { status: 400 })
 
     const supabase = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    const { data: appt, error: apptErr } = await supabase
+    const { data: appt } = await supabase
       .from('appointments')
       .select('id, starts_at, business_id, services(name), employees(name), clients(name, whatsapp_number)')
       .eq('id', appointmentId)
       .single()
 
-    if (apptErr) console.error('[booking/confirm] appointment fetch:', apptErr.message)
     if (!appt) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
     const client = appt.clients as unknown as { name: string; whatsapp_number: string | null } | null
     const service = appt.services as unknown as { name: string } | null
     const employee = appt.employees as unknown as { name: string } | null
+    if (!client?.whatsapp_number) return NextResponse.json({ sent: true, whatsapp: 'skipped: no phone' })
 
-    if (!client?.whatsapp_number) {
-      return NextResponse.json({ sent: true, whatsapp: 'skipped: no phone' })
-    }
-
-    const [{ data: biz }, { data: evolution }] = await Promise.all([
-      supabase
-        .from('businesses')
-        .select('name, address, timezone')
-        .eq('id', appt.business_id)
-        .single(),
-      supabase
-        .from('business_evolution_config')
-        .select('api_url, api_key, instance_name, enabled')
-        .eq('business_id', appt.business_id)
-        .maybeSingle(),
+    const [{ data: biz }, { data: evolution }, { data: rule }] = await Promise.all([
+      supabase.from('businesses').select('name, address, timezone').eq('id', appt.business_id).single(),
+      supabase.from('business_evolution_config').select('api_url, api_key, instance_name, enabled').eq('business_id', appt.business_id).maybeSingle(),
+      supabase.from('business_automation_rules').select('enabled, message_template').eq('business_id', appt.business_id).eq('rule_key', 'confirmation_request').maybeSingle(),
     ])
 
+    if (!rule?.enabled) return NextResponse.json({ sent: true, whatsapp: 'skipped: automation disabled' })
     if (!evolution?.enabled || !evolution.api_url || !evolution.api_key || !evolution.instance_name) {
       return NextResponse.json({ sent: true, whatsapp: 'skipped: Evolution disabled' })
     }
@@ -107,44 +52,34 @@ export async function POST(req: NextRequest) {
       .select('id')
       .eq('business_id', appt.business_id)
       .eq('ref_id', appt.id)
-      .eq('type', 'confirm')
+      .eq('type', 'automation_confirmation_request')
       .eq('channel', 'whatsapp')
       .maybeSingle()
 
-    if (alreadySent) {
-      return NextResponse.json({ sent: true, whatsapp: 'skipped: already sent' })
-    }
+    if (alreadySent) return NextResponse.json({ sent: true, whatsapp: 'skipped: already sent' })
 
-    const timezone = biz?.timezone ?? 'America/Sao_Paulo'
-    const message = bookingConfirmationMessage({
+    const message = renderAutomationMessage(rule.message_template, {
       clientName: client.name,
-      serviceName: service?.name ?? 'Atendimento',
-      date: formatDate(appt.starts_at, timezone),
-      time: formatTime(appt.starts_at, timezone),
+      serviceName: service?.name,
       businessName: biz?.name ?? 'Agelya',
-      employeeName: employee?.name ?? undefined,
-      address: biz?.address ?? undefined,
+      employeeName: employee?.name,
+      address: biz?.address,
+      startsAt: appt.starts_at,
+      timezone: biz?.timezone,
     })
 
     await sendEvolutionText(
-      {
-        apiUrl: evolution.api_url,
-        apiKey: evolution.api_key,
-        instance: evolution.instance_name,
-      },
+      { apiUrl: evolution.api_url, apiKey: evolution.api_key, instance: evolution.instance_name },
       client.whatsapp_number,
       message
     )
 
-    const { error: logErr } = await supabase.from('notification_log').insert({
+    await supabase.from('notification_log').insert({
       business_id: appt.business_id,
       ref_id: appt.id,
-      type: 'confirm',
+      type: 'automation_confirmation_request',
       channel: 'whatsapp',
     })
-    if (logErr && logErr.code !== '23505') {
-      console.error('[booking/confirm] notification log:', logErr.message)
-    }
 
     return NextResponse.json({ sent: true, whatsapp: 'sent' })
   } catch (err) {
