@@ -1,0 +1,110 @@
+name: Fix core dashboard i18n once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/i18n-dashboard-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Localize Agenda, Estoque and Caixa
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+
+          // Agenda
+          {
+            const path = 'app/(dashboard)/booking/booking-calendar.tsx'
+            let s = fs.readFileSync(path, 'utf8')
+            s = s.replace("import { useTranslations } from 'next-intl'", "import { useLocale, useTranslations } from 'next-intl'")
+            s = s.replace("  const t = useTranslations('booking')\n", "  const t = useTranslations('booking')\n  const locale = useLocale()\n")
+            s = s.replace("  const locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US'\n", '')
+            s = s.replaceAll("toLocaleDateString('en-US', { month: 'short', day: 'numeric' })", "toLocaleDateString(locale, { month: 'short', day: 'numeric' })")
+            s = s.replaceAll("toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })", "toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })")
+            s = s.replace('title="Color legend"', "title={t('calendar.colorLegend')}")
+            s = s.replace('>Team colors</div>', ">{t('calendar.teamColors')}</div>")
+            s = s.replace('>No team members yet</p>', ">{t('calendar.noTeamMembers')}</p>")
+            s = s.replaceAll('>Unassigned</span>', ">{t('detail.unassigned')}</span>")
+            s = s.replaceAll('<option value="">Unassigned</option>', "<option value=\"\">{t('detail.unassigned')}</option>")
+            s = s.replace('>Appointment status</div>', ">{t('calendar.appointmentStatus')}</div>")
+            s = s.replace("{status.replace('_', ' ')}", "{t(`status.${status}`)}")
+            s = s.replace('⚠ This time is outside your business hours', "{t('form.outsideHoursWarning')}")
+            s = s.replace('>Delete this appointment?</p>', ">{t('detail.deleteConfirm')}</p>")
+            s = s.replace('>\n                    Delete\n                  </Button>', ">\n                    {t('detail.deleteConfirmYes')}\n                  </Button>")
+            s = s.replace('>\n                    Cancel\n                  </Button>', ">\n                    {t('form.cancel')}\n                  </Button>")
+            s = s.replace('>\n                Delete appointment\n              </Button>', ">\n                {t('detail.deleteButton')}\n              </Button>")
+            fs.writeFileSync(path, s)
+          }
+
+          // Estoque
+          {
+            const path = 'app/(dashboard)/inventory/inventory-list.tsx'
+            let s = fs.readFileSync(path, 'utf8')
+            s = s.replace('placeholder="Search by name or SKU…"', "placeholder={t('searchPlaceholder')}")
+            s = s.replace('<div className="font-medium">No items match {\'"\'}{query}{\'"\'}</div>', "<div className=\"font-medium\">{t('noMatch', { query })}</div>")
+            fs.writeFileSync(path, s)
+          }
+
+          // Caixa / PDV
+          {
+            const path = 'app/(dashboard)/pos/pos-terminal.tsx'
+            let s = fs.readFileSync(path, 'utf8')
+            s = s.replace('Saved offline. Will sync when internet is restored.', "{t('offlineSavedReceipt')}")
+            s = s.replace('>Save this customer to your client base?</p>', ">{t('saveClientPrompt')}</p>")
+            s = s.replace('placeholder="Name *"', "placeholder={t('saveClientNamePlaceholder')}")
+            s = s.replace('placeholder="Phone"', "placeholder={t('saveClientPhonePlaceholder')}")
+            s = s.replace('placeholder="Email"', "placeholder={t('saveClientEmailPlaceholder')}")
+            s = s.replace('placeholder="Notes"', "placeholder={t('saveClientNotesPlaceholder')}")
+            s = s.replace('>\n                    Skip\n                  </button>', ">\n                    {t('saveClientSkip')}\n                  </button>")
+            s = s.replace("{savingClient ? '…' : 'Save client'}", "{savingClient ? '…' : t('saveClientSave')}")
+            fs.writeFileSync(path, s)
+          }
+
+          // One new booking string required by all locales.
+          const outsideHours = {
+            pt: '⚠ Este horário está fora do horário de funcionamento',
+            en: '⚠ This time is outside your business hours',
+            es: '⚠ Este horario está fuera del horario de atención',
+            it: '⚠ Questo orario è fuori dall’orario di apertura',
+          }
+          for (const [locale, value] of Object.entries(outsideHours)) {
+            const path = `messages/${locale}.json`
+            const j = JSON.parse(fs.readFileSync(path, 'utf8'))
+            j.booking.form.outsideHoursWarning = value
+            fs.writeFileSync(path, JSON.stringify(j, null, 2) + '\n')
+          }
+          NODE
+
+      - name: Check core dashboard for known English leftovers
+        run: |
+          if grep -RInE --include='*.tsx' 'No team members yet|Delete this appointment|Delete appointment|This time is outside your business hours|Search by name or SKU|No items match|Save this customer to your client base|Saved offline\. Will sync|Save client' 'app/(dashboard)/booking' 'app/(dashboard)/inventory' 'app/(dashboard)/pos'; then
+            echo 'Known hardcoded English remains in core dashboard'
+            exit 1
+          fi
+
+      - name: Build
+        env:
+          DISABLE_PWA: 'true'
+        run: npm run build
+
+      - name: Commit
+        run: |
+          git config user.name 'Agelya Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add 'app/(dashboard)/booking/booking-calendar.tsx' 'app/(dashboard)/inventory/inventory-list.tsx' 'app/(dashboard)/pos/pos-terminal.tsx' messages/pt.json messages/en.json messages/es.json messages/it.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: localize core dashboard strings'
+          git push
