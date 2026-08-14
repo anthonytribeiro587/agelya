@@ -68,3 +68,37 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* Public booking — international WhatsApp input */
+.agelya-phone-input {
+  border: 0.5px solid #E8E0D8;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 14px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.agelya-phone-input:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px var(--brand-light);
+}
+.agelya-phone-input .PhoneInput { min-height: 46px; }
+.agelya-phone-input .PhoneInputCountry {
+  margin-right: 10px;
+  padding-right: 10px;
+  border-right: 1px solid #eee6df;
+}
+.agelya-phone-input .PhoneInputCountryFlag {
+  width: 24px;
+  height: 16px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.agelya-phone-input .PhoneInputInput {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #2D2926;
+  font-size: 14px;
+  min-width: 0;
+}

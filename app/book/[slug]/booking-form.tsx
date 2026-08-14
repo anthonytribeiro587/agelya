@@ -7,6 +7,8 @@ import { CalendarPlus, Loader2 } from 'lucide-react'
 import { buildGCalUrl } from '@/lib/gcal'
 import { DatePicker } from '@/components/ui/date-picker'
 import { useTranslations } from 'next-intl'
+import PhoneInput, { getCountries, isValidPhoneNumber, type Country } from 'react-phone-number-input'
+import ptPhoneLabels from 'react-phone-number-input/locale/pt.json'
 
 interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; capacity: number }
 interface Employee { id: string; name: string }
@@ -106,7 +108,8 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   const [selectedEmployee, setSelectedEmployee] = useState('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
-  const [contact, setContact] = useState({ name: '', phone: '', email: '' })
+  const [contact, setContact] = useState<{ name: string; phone?: string }>({ name: '', phone: undefined })
+  const [phoneCountry, setPhoneCountry] = useState<Country>('BR')
   const [saving, setSaving] = useState(false)
   const [slotTakenError, setSlotTakenError] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
@@ -125,6 +128,20 @@ export function PublicBookingForm({ business, services, employees, workingHours,
 
   const closedWeekdays = effectiveHours.filter((h) => !h.is_open).map((h) => h.day_of_week)
   const today = new Date().toISOString().slice(0, 10)
+
+  useEffect(() => {
+    const availablePhoneCountries = new Set(getCountries())
+    const localeRegion = navigator.language.split('-')[1]?.toUpperCase() as Country | undefined
+    if (localeRegion && availablePhoneCountries.has(localeRegion)) {
+      setPhoneCountry(localeRegion)
+      return
+    }
+
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (tz.startsWith('Australia/')) setPhoneCountry('AU')
+    else if (tz === 'Europe/Lisbon' || tz === 'Atlantic/Madeira' || tz === 'Atlantic/Azores') setPhoneCountry('PT')
+    else if (tz.startsWith('America/')) setPhoneCountry('BR')
+  }, [])
 
   useEffect(() => {
     if (!date || !selectedService) {
@@ -211,16 +228,8 @@ export function PublicBookingForm({ business, services, employees, workingHours,
 
   async function submit() {
     if (!selectedService || !date || !time || !contact.name) return
-    if (!contact.phone && !contact.email) {
-      setBookingError('Please enter at least a phone number or email so we can confirm your booking.')
-      return
-    }
-    if (contact.phone && !/^[\d\s\+\-\(\)\.]{7,}$/.test(contact.phone)) {
-      setBookingError('Please enter a valid phone number (digits only, e.g. +1 234 567 8900).')
-      return
-    }
-    if (contact.email && !contact.email.includes('@')) {
-      setBookingError('Please enter a valid email address (e.g. name@example.com).')
+    if (!contact.phone || !isValidPhoneNumber(contact.phone)) {
+      setBookingError('Informe um número de WhatsApp válido com DDD.')
       return
     }
     setSaving(true)
@@ -238,8 +247,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
           date,
           time,
           name:  contact.name,
-          phone: contact.phone || null,
-          email: contact.email || null,
+          phone: contact.phone,
         }),
       })
 
@@ -273,7 +281,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       setSaving(false)
     } catch {
       setSaving(false)
-      setBookingError('Something went wrong. Please try again or contact the business directly.')
+      setBookingError('Não foi possível concluir o agendamento. Tente novamente.')
     }
   }
 
@@ -296,7 +304,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
     setSelectedEmployee('')
     setDate('')
     setTime('')
-    setContact({ name: '', phone: '', email: '' })
+    setContact({ name: '', phone: undefined })
     setAvailableSlots([])
     setClientId(null)
     setClientHasTelegram(false)
@@ -536,28 +544,44 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {step === 'contact' && (
         <div>
           <BackLink label={t('contact.back')} onClick={() => setStep('datetime')} />
-          <StepBadge label="Your details" />
+          <StepBadge label="Seus dados" />
           <SectionTitle text={t('contact.heading')} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {([
-              { key: 'name' as const, label: t('contact.nameLabel'), placeholder: t('contact.namePlaceholder'), type: 'text' },
-              { key: 'phone' as const, label: t('contact.phoneLabel'), placeholder: t('contact.phonePlaceholder'), type: 'tel' },
-              { key: 'email' as const, label: t('contact.emailLabel'), placeholder: t('contact.emailPlaceholder'), type: 'email' },
-            ] as const).map(({ key, label, placeholder, type }) => (
-              <div key={key}>
-                <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>{label}</label>
-                <input
-                  type={type}
-                  value={contact[key]}
-                  onChange={(e) => setContact((c) => ({ ...c, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  style={{ border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#2D2926', width: '100%', background: 'white', outline: 'none', boxSizing: 'border-box' }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = '#E8E0D8' }}
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>Nome *</label>
+              <input
+                type="text"
+                value={contact.name}
+                onChange={(e) => setContact((c) => ({ ...c, name: e.target.value }))}
+                placeholder="Seu nome"
+                autoComplete="name"
+                style={{ border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#2D2926', width: '100%', background: 'white', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>WhatsApp *</label>
+              <div className="agelya-phone-input">
+                <PhoneInput
+                  key={phoneCountry}
+                  labels={ptPhoneLabels}
+                  defaultCountry={phoneCountry}
+                  value={contact.phone}
+                  onChange={(value) => {
+                    setContact((c) => ({ ...c, phone: value }))
+                    setBookingError(null)
+                  }}
+                  onCountryChange={(country) => country && setPhoneCountry(country)}
+                  placeholder="(51) 99999-9999"
+                  autoComplete="tel"
+                  smartCaret
                 />
               </div>
-            ))}
+              <p style={{ fontSize: 11, color: '#9A8E85', margin: '6px 0 0' }}>
+                Selecione o país e informe seu número com DDD. A confirmação será enviada por WhatsApp.
+              </p>
+            </div>
           </div>
 
           {bookingError && (
