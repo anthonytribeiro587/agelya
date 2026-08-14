@@ -145,19 +145,26 @@ export async function POST(req: NextRequest, { params }: { params: { businessId:
 
   if (updateError) return NextResponse.json({ error: 'update_failed' }, { status: 500 })
 
-  await admin.from('notification_log').insert({
+  const { error: logError } = await admin.from('notification_log').insert({
     business_id: params.businessId,
     ref_id: appointment.id,
     type: 'confirmation_received',
     channel: 'whatsapp',
-  }).then(() => undefined).catch(() => undefined)
+  })
+  if (logError && logError.code !== '23505') {
+    console.error('[evolution/webhook] notification log:', logError.message)
+  }
 
   if (config.enabled && config.api_url && config.api_key && config.instance_name) {
-    await sendEvolutionText(
-      { apiUrl: config.api_url, apiKey: config.api_key, instance: config.instance_name },
-      phone,
-      `✅ Perfeito, ${client.name}! Seu horário está confirmado. Obrigado pela resposta!`
-    ).catch((err) => console.error('[evolution/webhook] confirmation acknowledgement:', err))
+    try {
+      await sendEvolutionText(
+        { apiUrl: config.api_url, apiKey: config.api_key, instance: config.instance_name },
+        phone,
+        `✅ Perfeito, ${client.name}! Seu horário está confirmado. Obrigado pela resposta!`
+      )
+    } catch (err) {
+      console.error('[evolution/webhook] confirmation acknowledgement:', err)
+    }
   }
 
   return NextResponse.json({ ok: true, confirmed: true })
