@@ -1,0 +1,146 @@
+name: Fix public booking i18n once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/i18n-public-booking-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Make public booking respect selected locale
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+
+          // Public booking form: remove hardcoded English from visible customer flow.
+          {
+            const path = 'app/book/[slug]/booking-form.tsx'
+            let s = fs.readFileSync(path, 'utf8')
+
+            s = s.replace(
+              "import { useTranslations } from 'next-intl'",
+              "import { useLocale, useTranslations } from 'next-intl'"
+            )
+            s = s.replace(
+              "  const t = useTranslations('publicBooking')\n",
+              "  const t = useTranslations('publicBooking')\n  const locale = useLocale()\n"
+            )
+            s = s.replace("  const locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US'\n", '')
+
+            const replacements = new Map([
+              ['<StepBadge label="Select service" />', '<StepBadge label={t(\'stepSelectService\')} />'],
+              ['<StepBadge label="Choose specialist" />', '<StepBadge label={t(\'stepChooseSpecialist\')} />'],
+              ['<StepBadge label="Date & time" />', '<StepBadge label={t(\'stepDatetime\')} />'],
+              ['<StepBadge label="Seus dados" />', '<StepBadge label={t(\'stepYourDetails\')} />'],
+              ['⚠ This time was just booked by someone else. Please choose a different time.', "{t('slotTaken')}"],
+              ['Loading available times&hellip;', "{t('loadingTimes')}"],
+              ['This day is outside working hours. Please choose another date.', "{t('dayClosed')}"],
+              ['No available times for this day. Please choose another date.', "{t('noSlots')}"],
+              ['{spotsLeft} spots left', "{t('spotsLeft', { count: spotsLeft })}"],
+              ['>Nome *</label>', ">{t('contact.nameLabel')}</label>"],
+              ['placeholder="Seu nome"', "placeholder={t('contact.namePlaceholder')}"],
+              ['>WhatsApp *</label>', ">{t('contact.phoneLabel')}</label>"],
+              ['placeholder="(51) 99999-9999"', "placeholder={t('contact.phonePlaceholder')}"],
+              ['Selecione o país e informe seu número com DDD. A confirmação será enviada por WhatsApp.', "{t('contact.phoneHint')}"],
+              ["setBookingError('Informe um número de WhatsApp válido com DDD.')", "setBookingError(t('errorPhone'))"],
+              ["setBookingError('Too many booking attempts. Please wait a few minutes and try again.')", "setBookingError(t('errorRateLimit'))"],
+              ["setBookingError('Não foi possível concluir o agendamento. Tente novamente.')", "setBookingError(t('errorGeneric'))"],
+              [' · {date} at {time ? formatSlot(time) : \'\'}', " · {date} {t('at')} {time ? formatSlot(time) : ''}"],
+              ['Add to Google Calendar', "{t('addToGoogleCalendar')}"],
+            ])
+
+            for (const [from, to] of replacements) s = s.replaceAll(from, to)
+            fs.writeFileSync(path, s)
+          }
+
+          // Public booking page/server metadata must also use the selected locale.
+          {
+            const path = 'app/book/[slug]/page.tsx'
+            let s = fs.readFileSync(path, 'utf8')
+            if (!s.includes("next-intl/server")) {
+              s = s.replace(
+                "import { getViberBotInfo } from '@/lib/viber'",
+                "import { getViberBotInfo } from '@/lib/viber'\nimport { getTranslations } from 'next-intl/server'"
+              )
+            }
+            s = s.replace(
+              "export async function generateMetadata({ params }: { params: { slug: string } }) {\n  const supabase = createServiceClient()",
+              "export async function generateMetadata({ params }: { params: { slug: string } }) {\n  const t = await getTranslations('publicBooking')\n  const supabase = createServiceClient()"
+            )
+            s = s.replace(
+              "    title: data ? `Book at ${data.name}` : 'Book appointment',",
+              "    title: data ? `${t('bookAnAppointment')} — ${data.name}` : t('bookAnAppointment'),"
+            )
+            s = s.replace(
+              "export default async function PublicBookingPage({ params }: { params: { slug: string } }) {\n  const supabase = createServiceClient()",
+              "export default async function PublicBookingPage({ params }: { params: { slug: string } }) {\n  const t = await getTranslations('publicBooking')\n  const supabase = createServiceClient()"
+            )
+            s = s.replace('>Book an appointment</div>', ">{t('bookAnAppointment')}</div>")
+            fs.writeFileSync(path, s)
+          }
+
+          // Portuguese copy: WhatsApp-first booking terminology.
+          {
+            const path = 'messages/pt.json'
+            const j = JSON.parse(fs.readFileSync(path, 'utf8'))
+            j.publicBooking.contact.phoneLabel = 'WhatsApp *'
+            j.publicBooking.contact.phonePlaceholder = '(51) 99999-9999'
+            j.publicBooking.contact.phoneHint = 'Selecione o país e informe seu número com DDD. A confirmação e os lembretes serão enviados pelo WhatsApp.'
+            j.publicBooking.errorContactRequired = 'Informe seu WhatsApp para confirmar o agendamento.'
+            j.publicBooking.errorPhone = 'Informe um número de WhatsApp válido com DDD.'
+            j.publicBooking.errorGeneric = 'Não foi possível concluir o agendamento. Tente novamente ou entre em contato com o estabelecimento.'
+            if (j.settings?.modules?.items?.inventory) {
+              j.settings.modules.items.inventory.description = 'Estoque, produtos e alertas de estoque baixo'
+            }
+            fs.writeFileSync(path, JSON.stringify(j, null, 2) + '\n')
+          }
+
+          // Add phoneHint to every locale so changing languages never creates a missing-key error.
+          const hints = {
+            en: 'Select your country and enter your number with area code. Confirmation and reminders will be sent by WhatsApp.',
+            es: 'Selecciona tu país e introduce tu número con código de área. La confirmación y los recordatorios se enviarán por WhatsApp.',
+            it: 'Seleziona il paese e inserisci il numero con prefisso. Conferma e promemoria verranno inviati tramite WhatsApp.',
+          }
+          for (const [locale, hint] of Object.entries(hints)) {
+            const path = `messages/${locale}.json`
+            const j = JSON.parse(fs.readFileSync(path, 'utf8'))
+            j.publicBooking.contact.phoneHint = hint
+            fs.writeFileSync(path, JSON.stringify(j, null, 2) + '\n')
+          }
+          NODE
+
+      - name: Ensure public booking has no common hardcoded English UI copy
+        run: |
+          if grep -nE 'Select service|Choose specialist|Date & time|Loading available times|This day is outside|No available times|spots left|Add to Google Calendar|Too many booking attempts|Book an appointment' 'app/book/[slug]/booking-form.tsx' 'app/book/[slug]/page.tsx'; then
+            echo 'Found hardcoded English in public booking'
+            exit 1
+          fi
+
+      - name: Build
+        env:
+          DISABLE_PWA: 'true'
+        run: npm run build
+
+      - name: Audit likely hardcoded English elsewhere
+        run: |
+          echo '--- Potential user-facing English strings outside public booking (informational) ---'
+          grep -RInE --include='*.tsx' --include='*.ts' '>(Save|Cancel|Delete|Edit|Search|Loading|Settings|Dashboard|Clients|Inventory|Booking|Appointments|Add |New |No |Something went wrong|Please |Try again|Back|Continue|Confirm)[^<]*<' app components 2>/dev/null | head -120 || true
+
+      - name: Commit
+        run: |
+          git config user.name 'Agelya Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add 'app/book/[slug]/booking-form.tsx' 'app/book/[slug]/page.tsx' messages/pt.json messages/en.json messages/es.json messages/it.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: make public booking respect selected language'
+          git push
