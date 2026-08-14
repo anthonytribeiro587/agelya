@@ -28,7 +28,7 @@ jobs:
 
           rsync -a --delete \
             --exclude='.git' \
-            --exclude='.github/workflows/bootstrap-agelya.yml' \
+            --exclude='.github/workflows/*' \
             "$TMP_DIR/pronto/" ./
 
       - name: Apply Agelya foundation
