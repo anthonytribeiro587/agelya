@@ -3,8 +3,6 @@ export const dynamic = 'force-dynamic'
 import { createServiceClient } from '@/lib/supabase/service'
 import { notFound } from 'next/navigation'
 import { PublicBookingForm } from './booking-form'
-import { getTelegramBotInfo } from '@/lib/telegram'
-import { getViberBotInfo } from '@/lib/viber'
 import { getTranslations } from 'next-intl/server'
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
@@ -25,7 +23,6 @@ export default async function PublicBookingPage({ params }: { params: { slug: st
   const t = await getTranslations('publicBooking')
   const supabase = createServiceClient()
 
-  // Public data — brand_color included for warm/premium design
   const { data: business } = await supabase
     .from('businesses')
     .select('id, name, type, phone, logo_url, currency, slug, timezone, address, brand_color')
@@ -34,19 +31,10 @@ export default async function PublicBookingPage({ params }: { params: { slug: st
 
   if (!business) notFound()
 
-  // Tokens fetched server-side only — never serialised to the client
-  const { data: bizTokens } = await supabase
-    .from('businesses')
-    .select('telegram_bot_token, viber_bot_token')
-    .eq('id', business.id)
-    .maybeSingle()
-
   const [
     { data: services },
     { data: employees },
     { data: businessHours },
-    telegramInfo,
-    viberInfo,
   ] = await Promise.all([
     supabase
       .from('services')
@@ -65,16 +53,7 @@ export default async function PublicBookingPage({ params }: { params: { slug: st
       .select('day_of_week, is_open, open_time, close_time')
       .eq('business_id', business.id)
       .order('day_of_week'),
-    bizTokens?.telegram_bot_token
-      ? getTelegramBotInfo(bizTokens.telegram_bot_token)
-      : Promise.resolve({ ok: false as const }),
-    bizTokens?.viber_bot_token
-      ? getViberBotInfo(bizTokens.viber_bot_token)
-      : Promise.resolve({ ok: false as const }),
   ])
-
-  const telegramBotUsername = telegramInfo.ok ? (telegramInfo as { ok: true; result: { username: string } }).result?.username ?? null : null
-  const viberBotUri = viberInfo.ok ? (viberInfo as { ok: true; uri?: string }).uri ?? null : null
 
   const brandColor = business.brand_color || '#2D2926'
 
@@ -85,7 +64,6 @@ export default async function PublicBookingPage({ params }: { params: { slug: st
         '--brand-light': `${brandColor}18`,
       } as React.CSSProperties}
     >
-      {/* Header */}
       <header style={{ background: 'white', borderBottom: '0.5px solid #E8E0D8', padding: '14px 16px' }}>
         <div style={{ maxWidth: 448, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           {business.logo_url ? (
@@ -103,7 +81,6 @@ export default async function PublicBookingPage({ params }: { params: { slug: st
         </div>
       </header>
 
-      {/* Content */}
       <div style={{ background: '#FBF8F5', minHeight: 'calc(100vh - 67px)', padding: '20px 16px' }}>
         <div style={{ maxWidth: 448, margin: '0 auto' }}>
           <PublicBookingForm
@@ -111,8 +88,6 @@ export default async function PublicBookingPage({ params }: { params: { slug: st
             services={services ?? []}
             employees={employees ?? []}
             workingHours={businessHours ?? []}
-            telegramBotUsername={telegramBotUsername}
-            viberBotUri={viberBotUri}
           />
         </div>
       </div>
