@@ -1,39 +1,29 @@
--- Миграция 007: Автоматический планировщик уведомлений (pg_cron + pg_net)
+-- Agelya: agendador das automações de WhatsApp (pg_cron + pg_net)
 --
--- Что это делает:
---   Создаёт задачу внутри базы данных Supabase, которая каждые 15 минут
---   автоматически вызывает /api/cron/notify — отправляет напоминания о записях,
---   благодарности после визита, поздравления с днём рождения и т.д.
+-- Esta migration é opcional até as extensões pg_cron e pg_net estarem
+-- habilitadas no Supabase. O runner de migrations substitui automaticamente:
+--   ${NEXT_PUBLIC_APP_URL} pela URL da Agelya
+--   ${CRON_SECRET} pelo segredo configurado no ambiente
 --
--- ВАЖНО — перед запуском этого файла:
---
---   1. Включите расширение pg_cron в Supabase Dashboard:
---      Database → Extensions → найдите "pg_cron" → включите (Toggle ON)
---
---   2. Убедитесь что расширение pg_net тоже включено:
---      Database → Extensions → "pg_net" → должно быть включено (обычно уже включено)
---
---   3. ЗАМЕНИТЕ два значения-заглушки в этом файле:
---      - YOUR_APP_URL  → ваш реальный домен, например: https://myapp.com
---      - YOUR_CRON_SECRET → значение CRON_SECRET из вашего файла .env
---
---   4. Запустите этот файл в Supabase Dashboard → SQL Editor
---
--- ─────────────────────────────────────────────────────────────────────────────
+-- O job chama /api/cron/notify a cada 15 minutos. O endpoint exige Bearer
+-- CRON_SECRET e lê business_automation_rules para decidir quais mensagens enviar.
 
--- Удаляем задачу если уже существует (чтобы можно было перезапустить миграцию)
+-- Remove nomes usados por versões anteriores, caso já existam.
 select cron.unschedule('pronto-notify') where exists (
   select 1 from cron.job where jobname = 'pronto-notify'
 );
 
--- Создаём задачу: каждые 15 минут вызываем /api/cron/notify
--- pg_net.http_get — встроенный в Supabase способ делать HTTP-запросы из базы данных
+select cron.unschedule('agelya-notify') where exists (
+  select 1 from cron.job where jobname = 'agelya-notify'
+);
+
+-- Executa as regras ativas a cada 15 minutos.
 select cron.schedule(
-  'pronto-notify',        -- имя задачи (уникальное)
-  '*/15 * * * *',         -- расписание: каждые 15 минут
+  'agelya-notify',
+  '*/15 * * * *',
   $$
   select net.http_get(
-    url     := '${NEXT_PUBLIC_APP_URL}/api/cron/notify',
+    url := '${NEXT_PUBLIC_APP_URL}/api/cron/notify',
     headers := jsonb_build_object(
       'Authorization', 'Bearer ${CRON_SECRET}'
     )
@@ -41,8 +31,14 @@ select cron.schedule(
   $$
 );
 
--- После запуска можно проверить что задача создана:
--- SELECT * FROM cron.job WHERE jobname = 'pronto-notify';
+-- Verificação manual após a migration:
+-- SELECT jobid, jobname, schedule, active
+-- FROM cron.job
+-- WHERE jobname = 'agelya-notify';
 --
--- Посмотреть историю запусков (последние выполнения):
--- SELECT * FROM cron.job_run_details WHERE jobname = 'pronto-notify' ORDER BY start_time DESC LIMIT 10;
+-- Histórico:
+-- SELECT *
+-- FROM cron.job_run_details
+-- WHERE jobname = 'agelya-notify'
+-- ORDER BY start_time DESC
+-- LIMIT 10;
