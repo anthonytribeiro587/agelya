@@ -1,0 +1,48 @@
+name: Evolution settings one-time patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/evolution-settings-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Replace legacy notification settings
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const path = 'app/(dashboard)/settings/settings-tabs.tsx'
+          let text = fs.readFileSync(path, 'utf8')
+
+          const importNeedle = "import { MODULES, ModuleKey } from '@/lib/modules'"
+          if (!text.includes("import { EvolutionSettings } from './evolution-settings'")) {
+            text = text.replace(importNeedle, `${importNeedle}\nimport { EvolutionSettings } from './evolution-settings'`)
+          }
+
+          const startMarker = '      {/* Notifications */}'
+          const endMarker = '      {/* Billing — self-hosted info */}'
+          const start = text.indexOf(startMarker)
+          const end = text.indexOf(endMarker, start)
+          if (start === -1 || end === -1) throw new Error('Notification settings markers not found')
+
+          const replacement = `      {/* Notifications — Agelya uses Evolution API only */}\n      {tab === 'notifications' && <EvolutionSettings />}\n\n`
+          text = text.slice(0, start) + replacement + text.slice(end)
+          fs.writeFileSync(path, text)
+          NODE
+      - name: Commit patch
+        run: |
+          git config user.name "Agelya Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add 'app/(dashboard)/settings/settings-tabs.tsx'
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: replace legacy notification settings with Evolution API"
+          git push
