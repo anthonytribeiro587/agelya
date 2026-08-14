@@ -87,7 +87,7 @@ export default async function LoginPage({
 
       <p className="text-sm text-gray-500 text-center mt-6">
         {t('noAccount')}{' '}
-        <Link href="/register" className="text-blue-600 hover:underline">{t('createAccount')}</Link>
+        <Link href="/register" className="text-blue-600 hover:underline">Criar conta</Link>
       </p>
     </div>
   )
