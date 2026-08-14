@@ -1,0 +1,242 @@
+name: Finalize latest Agelya automations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/finalize-latest-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm ci
+
+      - name: Update Supabase generated types for Agelya migrations
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const path = 'lib/supabase/database.types.ts'
+          let s = fs.readFileSync(path, 'utf8')
+
+          // Migration 037 appointment confirmation fields.
+          const appointmentSections = [
+            ['          source: string\n          created_at: string', '          source: string\n          client_confirmed_at: string | null\n          client_confirmation_text: string | null\n          created_at: string'],
+            ['          source?: string\n          created_at?: string', '          source?: string\n          client_confirmed_at?: string | null\n          client_confirmation_text?: string | null\n          created_at?: string'],
+          ]
+          for (const [from, to] of appointmentSections) s = s.replace(from, to)
+
+          if (!s.includes('      business_automation_rules: {')) {
+            const tables = `      business_automation_rules: {
+        Row: {
+          id: string
+          business_id: string
+          rule_key: string
+          name: string
+          event_type: string
+          offset_minutes: number
+          enabled: boolean
+          message_template: string
+          requires_reply_confirmation: boolean
+          confirmation_keywords: string[]
+          is_system: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          rule_key: string
+          name: string
+          event_type: string
+          offset_minutes?: number
+          enabled?: boolean
+          message_template: string
+          requires_reply_confirmation?: boolean
+          confirmation_keywords?: string[]
+          is_system?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          rule_key?: string
+          name?: string
+          event_type?: string
+          offset_minutes?: number
+          enabled?: boolean
+          message_template?: string
+          requires_reply_confirmation?: boolean
+          confirmation_keywords?: string[]
+          is_system?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_automation_rules_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      business_evolution_config: {
+        Row: {
+          business_id: string
+          api_url: string
+          api_key: string
+          instance_name: string
+          enabled: boolean
+          last_status: string | null
+          last_checked_at: string | null
+          webhook_secret: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          api_url: string
+          api_key: string
+          instance_name: string
+          enabled?: boolean
+          last_status?: string | null
+          last_checked_at?: string | null
+          webhook_secret?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          api_url?: string
+          api_key?: string
+          instance_name?: string
+          enabled?: boolean
+          last_status?: string | null
+          last_checked_at?: string | null
+          webhook_secret?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_evolution_config_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+`
+            s = s.replace('      business_hours: {', tables + '      business_hours: {')
+          }
+
+          fs.writeFileSync(path, s)
+          NODE
+
+      - name: Apply prepared automation translations
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const yaml = fs.readFileSync('.github/workflows/automations-i18n-once.yml', 'utf8')
+          const marker = "          node <<'NODE'\n"
+          const start = yaml.indexOf(marker)
+          const end = yaml.indexOf('\n          NODE', start + marker.length)
+          if (start === -1 || end === -1) throw new Error('Translation script not found')
+          let script = yaml.slice(start + marker.length, end)
+          script = script.split('\n').map((line) => line.startsWith('          ') ? line.slice(10) : line).join('\n')
+          fs.writeFileSync('/tmp/apply-i18n.js', script)
+          NODE
+          node /tmp/apply-i18n.js
+
+      - name: Finalize booking confirmation UX
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const path = 'app/book/[slug]/booking-form.tsx'
+          let s = fs.readFileSync(path, 'utf8')
+          s = s.replace('  telegramBotUsername: string | null\n  viberBotUri: string | null', '  telegramBotUsername?: string | null\n  viberBotUri?: string | null')
+          if (!s.includes('awaitingConfirmation, setAwaitingConfirmation')) {
+            s = s.replace('  const [clientHasTelegram, setClientHasTelegram] = useState(false)\n', '  const [clientHasTelegram, setClientHasTelegram] = useState(false)\n  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false)\n')
+          }
+          s = s.replace('      setClientHasTelegram(data.hasTelegram ?? false)\n      setStep(\'done\')', '      setClientHasTelegram(data.hasTelegram ?? false)\n      setAwaitingConfirmation(Boolean(data.awaitingConfirmation))\n      setStep(\'done\')')
+          s = s.replace('    setClientHasTelegram(false)\n    setBookingError(null)', '    setClientHasTelegram(false)\n    setAwaitingConfirmation(false)\n    setBookingError(null)')
+          s = s.replace("{t('success.heading')}</h2>", "{t(awaitingConfirmation ? 'success.pendingHeading' : 'success.heading')}</h2>")
+          s = s.replace("{t('success.body')}</p>", "{t(awaitingConfirmation ? 'success.pendingBody' : 'success.body')}</p>")
+          const replacements = [
+            ['Adicionar ao Google Agenda', "{t('addToGoogleCalendar')}"],
+            ['<StepBadge label="Escolha o serviço" />', "<StepBadge label={t('stepSelectService')} />"],
+            ['<StepBadge label="Escolha o profissional" />', "<StepBadge label={t('stepChooseSpecialist')} />"],
+            ['<StepBadge label="Data e horário" />', "<StepBadge label={t('stepDatetime')} />"],
+            ['⚠ Este horário acabou de ser reservado. Escolha outro horário.', "{t('slotTaken')}"],
+            ['Carregando horários disponíveis&hellip;', "{t('loadingTimes')}"],
+            ['Este dia está fora do horário de atendimento. Escolha outra data.', "{t('dayClosed')}"],
+            ['Não há horários disponíveis neste dia. Escolha outra data.', "{t('noSlots')}"],
+          ]
+          for (const [from, to] of replacements) s = s.replaceAll(from, to)
+          fs.writeFileSync(path, s)
+
+          const pending = {
+            pt: ['Horário reservado!', 'Enviamos uma mensagem no WhatsApp. Responda SIM para confirmar seu agendamento.'],
+            en: ['Time reserved!', 'We sent you a WhatsApp message. Reply YES to confirm your appointment.'],
+            es: ['¡Horario reservado!', 'Te enviamos un mensaje por WhatsApp. Responde SÍ para confirmar tu cita.'],
+            it: ['Orario riservato!', 'Ti abbiamo inviato un messaggio WhatsApp. Rispondi SÌ per confermare l’appuntamento.'],
+          }
+          for (const [locale, [heading, body]] of Object.entries(pending)) {
+            const p = `messages/${locale}.json`
+            const json = JSON.parse(fs.readFileSync(p, 'utf8'))
+            json.publicBooking.success.pendingHeading = heading
+            json.publicBooking.success.pendingBody = body
+            fs.writeFileSync(p, JSON.stringify(json, null, 2) + '\n')
+          }
+          NODE
+
+      - name: Security checks
+        run: |
+          tracked_env=$(git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '\.(example|sample|template)$' || true)
+          test -z "$tracked_env" || { echo "$tracked_env"; exit 1; }
+          node <<'NODE'
+          const fs = require('fs'), path = require('path')
+          const bad = []
+          function walk(dir) {
+            if (!fs.existsSync(dir)) return
+            for (const e of fs.readdirSync(dir, {withFileTypes:true})) {
+              const p = path.join(dir,e.name)
+              if (e.isDirectory()) walk(p)
+              else if (/\.(ts|tsx)$/.test(p)) {
+                const x=fs.readFileSync(p,'utf8')
+                if (/^['\"]use client['\"]/m.test(x) && /SUPABASE_SERVICE_ROLE_KEY|CRON_SECRET|INTERNAL_API_SECRET/.test(x)) bad.push(p)
+              }
+            }
+          }
+          ;['app','components','lib'].forEach(walk)
+          if (bad.length) { console.error(bad); process.exit(1) }
+          NODE
+          npm audit --omit=dev --json > /tmp/audit.json || true
+          node -e "const r=require('/tmp/audit.json'),v=r.metadata?.vulnerabilities||{}; console.log('prod audit',v); if(v.critical) process.exit(1)"
+
+      - name: Build
+        env:
+          DISABLE_PWA: 'true'
+        run: npm run build
+
+      - name: Commit
+        run: |
+          git config user.name 'Agelya Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add lib/supabase/database.types.ts 'app/book/[slug]/booking-form.tsx' messages/pt.json messages/en.json messages/es.json messages/it.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat: finalize secure automation workflow'
+          git push
