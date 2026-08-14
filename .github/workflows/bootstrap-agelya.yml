@@ -1,0 +1,123 @@
+name: Bootstrap Agelya
+
+on:
+  push:
+    branches:
+      - agent/agelya-pronto-base
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: ${{ !contains(github.event.head_commit.message, '[bootstrap-complete]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Agelya
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Import latest Pronto upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          TMP_DIR="$(mktemp -d)"
+          git clone --depth 1 https://github.com/SGrappelli/pronto.git "$TMP_DIR/pronto"
+
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='.github/workflows/bootstrap-agelya.yml' \
+            "$TMP_DIR/pronto/" ./
+
+      - name: Apply Agelya foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python <<'PY'
+          from pathlib import Path
+          import json
+
+          package_path = Path('package.json')
+          package = json.loads(package_path.read_text())
+          package['name'] = 'agelya'
+          package['version'] = '0.1.0'
+          package['description'] = 'Agenda, clientes, serviços e relacionamento para profissionais de beleza, bem-estar e terapias.'
+          package_path.write_text(json.dumps(package, ensure_ascii=False, indent=2) + '\n')
+
+          # Agelya nasce em português do Brasil.
+          i18n_path = Path('i18n/request.ts')
+          if i18n_path.exists():
+              text = i18n_path.read_text()
+              text = text.replace("?? 'en'", "?? 'pt'")
+              text = text.replace(": 'en'", ": 'pt'")
+              i18n_path.write_text(text)
+
+          # Troca somente o nome visível do produto; URLs e integrações são revisadas depois.
+          roots = [Path('app'), Path('components'), Path('messages'), Path('lib')]
+          extensions = {'.ts', '.tsx', '.js', '.jsx', '.json', '.md'}
+          for root in roots:
+              if not root.exists():
+                  continue
+              for path in root.rglob('*'):
+                  if path.is_file() and path.suffix in extensions:
+                      try:
+                          text = path.read_text()
+                      except UnicodeDecodeError:
+                          continue
+                      new = text.replace('Pronto', 'Agelya')
+                      if new != text:
+                          path.write_text(new)
+          PY
+
+          cat > README.md <<'EOF'
+          # Agelya
+
+          Plataforma de agenda e gestão para profissionais de **beleza, bem-estar e terapias**, iniciando pelo fluxo de massoterapia.
+
+          ## Fundação técnica
+
+          A Agelya parte da edição self-hosted do [Pronto](https://github.com/SGrappelli/pronto), sob licença MIT, e mantém a atribuição correspondente no arquivo `LICENSE` e no histórico deste projeto.
+
+          Stack principal:
+
+          - Next.js 14 + React + TypeScript
+          - Supabase Auth + PostgreSQL + RLS
+          - Tailwind CSS
+          - Agenda pública e painel administrativo
+          - CRM, serviços, profissionais, caixa/POS e estoque
+          - PWA e Docker
+
+          ## Direção do produto
+
+          O primeiro vertical da Agelya é **massoterapia**, com foco em:
+
+          - agenda diária/semanal e prevenção de conflito de horários;
+          - cadastro e histórico de clientes;
+          - serviços, duração e intervalo entre sessões;
+          - pacotes de sessões e saldo restante;
+          - anamnese e consentimento;
+          - ficha de evolução por atendimento;
+          - financeiro simples;
+          - confirmação e lembretes por WhatsApp;
+          - página pública de agendamento.
+
+          ## Status
+
+          Esta branch importa a versão mais recente do Pronto e aplica a fundação inicial da marca Agelya. Antes de produção ainda serão revisados multiempresa, LGPD, dados sensíveis de saúde, integrações e identidade visual final.
+          EOF
+
+      - name: Commit imported foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Agelya Bootstrap"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "feat: bootstrap Agelya from Pronto upstream [bootstrap-complete]"
+          git push origin HEAD
