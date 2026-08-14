@@ -7,18 +7,17 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Agelya — Business Management for Service SMBs',
+  title: 'Agelya — Agenda e gestão para beleza e bem-estar',
   description:
-    'Self-hosted POS, CRM, Inventory & Omnichannel Notifications. Your data, your server. Zero commission. One command install.',
+    'Agenda, clientes, serviços, caixa e relacionamento para profissionais de beleza, bem-estar e terapias.',
   keywords: [
-    'open source POS',
-    'self-hosted CRM',
-    'appointment booking',
-    'Telegram notifications',
-    'salon management software',
-    'small business management',
+    'agenda online',
+    'massoterapia',
+    'gestão de clientes',
+    'agendamento online',
+    'estética',
+    'beleza e bem-estar',
   ],
-  // PWA
   manifest: '/site.webmanifest',
   appleWebApp: {
     capable: true,
@@ -37,16 +36,20 @@ export const metadata: Metadata = {
     apple: '/apple-touch-icon.png',
   },
   openGraph: {
-    images: [{ url: 'https://trypronto.app/og-image.png', width: 1200, height: 630 }],
+    title: 'Agelya — Agenda e gestão para beleza e bem-estar',
+    description: 'Organize agenda, clientes, serviços e relacionamento em um só lugar.',
+    locale: 'pt_BR',
+    type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    images: ['https://trypronto.app/og-image.png'],
+    title: 'Agelya',
+    description: 'Agenda e gestão para profissionais de beleza, bem-estar e terapias.',
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#2563eb',
+  themeColor: '#16a34a',
   width: 'device-width',
   initialScale: 1,
   minimumScale: 1,

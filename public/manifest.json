@@ -1,13 +1,13 @@
 {
-  "name": "Pronto — Business Management",
-  "short_name": "Pronto",
-  "description": "POS · CRM · Inventory · Booking for service businesses",
-  "start_url": "/",
+  "name": "Agelya — Agenda e Gestão",
+  "short_name": "Agelya",
+  "description": "Agenda, clientes, serviços e relacionamento para beleza e bem-estar",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "theme_color": "#16a34a",
   "orientation": "any",
-  "lang": "en",
+  "lang": "pt-BR",
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -30,27 +30,26 @@
   ],
   "shortcuts": [
     {
-      "name": "POS Terminal",
-      "short_name": "POS",
-      "description": "Quick checkout — complete a sale in 3 clicks",
-      "url": "/pos",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Booking Calendar",
-      "short_name": "Book",
-      "description": "View and manage appointments",
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "description": "Ver e gerenciar atendimentos",
       "url": "/booking",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Clients",
-      "short_name": "CRM",
-      "description": "Client list and history",
+      "name": "Clientes",
+      "short_name": "Clientes",
+      "description": "Cadastro e histórico de clientes",
       "url": "/crm",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Caixa",
+      "short_name": "Caixa",
+      "description": "Registrar recebimentos e vendas",
+      "url": "/pos",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ],
-  "categories": ["business", "productivity"],
-  "screenshots": []
+  "categories": ["business", "productivity", "health"]
 }

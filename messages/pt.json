@@ -1,11 +1,11 @@
 {
   "meta": {
-    "title": "Agelya — Gestão empresarial para negócios de serviços",
-    "description": "PDV, CRM, Estoque e Notificações omnicanal. Seus dados, seu servidor. Sem comissões. Instalação em um comando."
+    "title": "Agelya — Agenda e gestão para beleza e bem-estar",
+    "description": "Agenda, clientes, serviços, caixa e relacionamento para profissionais de beleza, bem-estar e terapias."
   },
   "brand": {
     "name": "Agelya",
-    "tagline": "Gestão empresarial · Sem comissões"
+    "tagline": "Agenda · clientes · relacionamento"
   },
   "nav": {
     "pricing": "Preços",
@@ -159,7 +159,7 @@
       "heading": "Adicione seu primeiro serviço",
       "subheading": "Você pode adicionar mais depois em Configurações",
       "serviceNameLabel": "Nome do serviço *",
-      "serviceNamePlaceholder": "Ex.: Corte de cabelo, Troca de óleo…",
+      "serviceNamePlaceholder": "Ex.: Massagem relaxante, drenagem linfática…",
       "priceLabel": "Preço *",
       "durationLabel": "Duração (min)",
       "back": "Voltar",
@@ -208,7 +208,7 @@
     "title": "Painel",
     "stats": {
       "revenueToday": "Receita hoje",
-      "appointmentsToday": "Agendamentos hoje",
+      "appointmentsToday": "Atendimentos hoje",
       "totalClients": "Total de clientes",
       "lowStock": "Itens com estoque baixo",
       "lowStockOk": "Tudo certo ✓",
@@ -779,10 +779,10 @@
   },
   "sidebar": {
     "dashboard": "Painel",
-    "pos": "PDV",
+    "pos": "Caixa",
     "clients": "Clientes",
     "inventory": "Estoque",
-    "booking": "Agendamentos",
+    "booking": "Agenda",
     "analytics": "Análises",
     "settings": "Configurações",
     "signOut": "Sair",
