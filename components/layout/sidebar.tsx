@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ShoppingCart, Users, Package, CalendarDays, Settings, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, Users, Package, CalendarDays, Settings, LogOut, Menu, X, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -27,6 +27,7 @@ export function Sidebar({ businessName }: SidebarProps) {
     { href: '/crm', label: t('clients'), icon: Users },
     { href: '/inventory', label: t('inventory'), icon: Package },
     { href: '/booking', label: t('booking'), icon: CalendarDays },
+    { href: '/automations', label: t('automations'), icon: Zap },
   ]
 
   async function handleLogout() {
@@ -103,12 +104,11 @@ export function Sidebar({ businessName }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 inset-x-0 z-30 h-14 bg-white border-b border-gray-200 flex items-center px-4 gap-3">
         <button
           onClick={() => setOpen(true)}
           className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-          aria-label="Open menu"
+          aria-label={t('openMenu')}
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -118,7 +118,6 @@ export function Sidebar({ businessName }: SidebarProps) {
         <div className="text-sm text-gray-500 truncate flex-1">{businessName}</div>
       </div>
 
-      {/* Mobile overlay */}
       {open && (
         <div
           className="md:hidden fixed inset-0 z-40 bg-black/40"
@@ -126,7 +125,6 @@ export function Sidebar({ businessName }: SidebarProps) {
         />
       )}
 
-      {/* Desktop sidebar */}
       <aside className="hidden md:flex w-60 shrink-0 flex-col h-screen sticky top-0 border-r border-white/10" style={{ backgroundColor: '#0d1b2e' }}>
         <div className="px-5 py-5 border-b border-white/10">
           <div className="font-bold text-lg" style={{ color: '#fff' }}>Agelya<span style={{ color: '#16a34a' }}>.</span></div>
@@ -135,7 +133,6 @@ export function Sidebar({ businessName }: SidebarProps) {
         {navLinks}
       </aside>
 
-      {/* Mobile drawer */}
       <aside className={cn(
         'md:hidden fixed inset-y-0 left-0 z-50 w-72 flex flex-col border-r border-white/10',
         'transition-transform duration-200 ease-in-out',
@@ -151,7 +148,7 @@ export function Sidebar({ businessName }: SidebarProps) {
             className="p-1.5 rounded-lg text-white/40 hover:text-white/70 transition-colors"
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.08)' }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = '' }}
-            aria-label="Close menu"
+            aria-label={t('closeMenu')}
           >
             <X className="w-5 h-5" />
           </button>
