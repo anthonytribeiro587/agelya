@@ -61,6 +61,40 @@ export async function getEvolutionConnectionState(credentials: EvolutionCredenti
   }
 }
 
+export async function setEvolutionWebhook(
+  credentials: EvolutionCredentials,
+  webhookUrl: string,
+  webhookSecret: string
+) {
+  const apiUrl = normalizeEvolutionUrl(credentials.apiUrl)
+  const response = await fetch(
+    `${apiUrl}/webhook/set/${encodeURIComponent(credentials.instance)}`,
+    {
+      method: 'POST',
+      headers: headers(credentials.apiKey),
+      body: JSON.stringify({
+        enabled: true,
+        url: webhookUrl,
+        webhookByEvents: false,
+        webhookBase64: false,
+        events: ['MESSAGES_UPSERT'],
+        headers: {
+          'x-agelya-webhook-secret': webhookSecret,
+        },
+      }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000),
+    }
+  )
+
+  if (!response.ok) {
+    const details = (await response.text().catch(() => '')).slice(0, 500)
+    throw new Error(`Evolution webhook ${response.status}: ${details || response.statusText}`)
+  }
+
+  return true
+}
+
 export async function sendEvolutionText(
   credentials: EvolutionCredentials,
   number: string,
