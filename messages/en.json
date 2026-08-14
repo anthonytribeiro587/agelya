@@ -473,7 +473,8 @@
       "cancel": "Cancel",
       "saving": "Saving…",
       "save": "Save",
-      "closedDayError": "This day is marked as closed in Working Hours. Update your schedule in Settings first."
+      "closedDayError": "This day is marked as closed in Working Hours. Update your schedule in Settings first.",
+      "outsideHoursWarning": "⚠ This time is outside your business hours"
     },
     "detail": {
       "statusLabel": "Status",

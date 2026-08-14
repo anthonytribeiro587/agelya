@@ -473,7 +473,8 @@
       "cancel": "Cancelar",
       "saving": "Guardando…",
       "save": "Guardar",
-      "closedDayError": "Este día está marcado como cerrado en Horario laboral. Actualiza tu horario en Configuración primero."
+      "closedDayError": "Este día está marcado como cerrado en Horario laboral. Actualiza tu horario en Configuración primero.",
+      "outsideHoursWarning": "⚠ Este horario está fuera del horario de atención"
     },
     "detail": {
       "statusLabel": "Estado",

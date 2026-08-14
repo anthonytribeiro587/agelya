@@ -326,7 +326,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
               <p className="text-sm text-gray-500 mb-1">{t('success.receipt')} {receiptNumber}</p>
               {isOfflineReceipt && (
                 <p className="text-xs text-orange-600 bg-orange-50 rounded-lg px-3 py-2 mb-3">
-                  Saved offline. Will sync when internet is restored.
+                  {t('offlineSavedReceipt')}
                 </p>
               )}
               <p className="text-2xl font-bold text-gray-900 mb-6">{formatCurrency(successAmount, currency)}</p>
@@ -338,31 +338,31 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
           {showSaveModal && (
             <Card>
               <CardContent className="pt-5 pb-5">
-                <p className="text-sm font-semibold text-gray-900 mb-3">Save this customer to your client base?</p>
+                <p className="text-sm font-semibold text-gray-900 mb-3">{t('saveClientPrompt')}</p>
                 <div className="space-y-2">
                   <input
                     type="text"
-                    placeholder="Name *"
+                    placeholder={t('saveClientNamePlaceholder')}
                     value={saveForm.name}
                     onChange={(e) => setSaveForm((f) => ({ ...f, name: e.target.value }))}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <input
                     type="tel"
-                    placeholder="Phone"
+                    placeholder={t('saveClientPhonePlaceholder')}
                     value={saveForm.phone}
                     onChange={(e) => setSaveForm((f) => ({ ...f, phone: e.target.value }))}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <input
                     type="email"
-                    placeholder="Email"
+                    placeholder={t('saveClientEmailPlaceholder')}
                     value={saveForm.email}
                     onChange={(e) => setSaveForm((f) => ({ ...f, email: e.target.value }))}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <textarea
-                    placeholder="Notes"
+                    placeholder={t('saveClientNotesPlaceholder')}
                     value={saveForm.notes}
                     onChange={(e) => setSaveForm((f) => ({ ...f, notes: e.target.value }))}
                     rows={2}
@@ -374,14 +374,14 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
                     onClick={() => setShowSaveModal(false)}
                     className="flex-1 border border-gray-200 rounded-lg py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
                   >
-                    Skip
+                    {t('saveClientSkip')}
                   </button>
                   <button
                     onClick={saveWalkinAsClient}
                     disabled={!saveForm.name.trim() || savingClient}
                     className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
                   >
-                    {savingClient ? '…' : 'Save client'}
+                    {savingClient ? '…' : t('saveClientSave')}
                   </button>
                 </div>
               </CardContent>

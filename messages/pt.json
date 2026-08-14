@@ -473,7 +473,8 @@
       "cancel": "Cancelar",
       "saving": "Salvando…",
       "save": "Salvar",
-      "closedDayError": "Este dia está marcado como fechado no Horário de funcionamento. Atualize sua agenda em Configurações primeiro."
+      "closedDayError": "Este dia está marcado como fechado no Horário de funcionamento. Atualize sua agenda em Configurações primeiro.",
+      "outsideHoursWarning": "⚠ Este horário está fora do horário de funcionamento"
     },
     "detail": {
       "statusLabel": "Status",

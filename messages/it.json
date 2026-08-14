@@ -472,7 +472,8 @@
       "cancel": "Annulla",
       "saving": "Salvataggio in corso…",
       "save": "Salva",
-      "closedDayError": "Questo giorno è contrassegnato come di chiusura negli Orari di Lavoro. Aggiorna prima i tuoi orari nelle Impostazioni."
+      "closedDayError": "Questo giorno è contrassegnato come di chiusura negli Orari di Lavoro. Aggiorna prima i tuoi orari nelle Impostazioni.",
+      "outsideHoursWarning": "⚠ Questo orario è fuori dall’orario di apertura"
     },
     "detail": {
       "statusLabel": "Stato",
