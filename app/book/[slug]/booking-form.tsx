@@ -6,7 +6,7 @@ import { formatCurrency, uses12HourClock } from '@/lib/utils'
 import { CalendarPlus, Loader2 } from 'lucide-react'
 import { buildGCalUrl } from '@/lib/gcal'
 import { DatePicker } from '@/components/ui/date-picker'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import PhoneInput, { getCountries, isValidPhoneNumber, type Country } from 'react-phone-number-input'
 import ptPhoneLabels from 'react-phone-number-input/locale/pt.json'
 
@@ -100,6 +100,7 @@ function CtaButton({ label, onClick, disabled }: { label: string; onClick: () =>
 export function PublicBookingForm({ business, services, employees, workingHours, telegramBotUsername, viberBotUri }: Props) {
   const supabase = createClient()
   const t = useTranslations('publicBooking')
+  const locale = useLocale()
 
   const hasEmployeeStep = employees.length > 1
 
@@ -252,7 +253,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   async function submit() {
     if (!selectedService || !date || !time || !contact.name) return
     if (!contact.phone || !isValidPhoneNumber(contact.phone)) {
-      setBookingError('Informe um número de WhatsApp válido com DDD.')
+      setBookingError(t('errorPhone'))
       return
     }
     setSaving(true)
@@ -291,7 +292,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
 
       if (res.status === 429) {
         setSaving(false)
-        setBookingError('Too many booking attempts. Please wait a few minutes and try again.')
+        setBookingError(t('errorRateLimit'))
         return
       }
 
@@ -304,7 +305,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       setSaving(false)
     } catch {
       setSaving(false)
-      setBookingError('Não foi possível concluir o agendamento. Tente novamente.')
+      setBookingError(t('errorGeneric'))
     }
   }
 
@@ -334,7 +335,6 @@ export function PublicBookingForm({ business, services, employees, workingHours,
     setBookingError(null)
   }
 
-  const locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US'
   const is12h = uses12HourClock(locale)
 
   function formatSlot(slot: string): string {
@@ -551,7 +551,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
                         <div>{formatSlot(ts)}</div>
                         {isPartial && (
                           <div style={{ fontSize: 10, color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--brand)', marginTop: 2 }}>
-                            {spotsLeft} spots left
+                            {t('spotsLeft', { count: spotsLeft })}
                           </div>
                         )}
                       </button>
@@ -570,24 +570,24 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {step === 'contact' && (
         <div>
           <BackLink label={t('contact.back')} onClick={() => setStep('datetime')} />
-          <StepBadge label="Seus dados" />
+          <StepBadge label={t('stepYourDetails')} />
           <SectionTitle text={t('contact.heading')} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>Nome *</label>
+              <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>{t('contact.nameLabel')}</label>
               <input
                 type="text"
                 value={contact.name}
                 onChange={(e) => setContact((c) => ({ ...c, name: e.target.value }))}
-                placeholder="Seu nome"
+                placeholder={t('contact.namePlaceholder')}
                 autoComplete="name"
                 style={{ border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#2D2926', width: '100%', background: 'white', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
             <div>
-              <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>WhatsApp *</label>
+              <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>{t('contact.phoneLabel')}</label>
               <div className="agelya-phone-input">
                 <PhoneInput
                   key={phoneCountry}
@@ -599,13 +599,13 @@ export function PublicBookingForm({ business, services, employees, workingHours,
                     setBookingError(null)
                   }}
                   onCountryChange={(country) => country && setPhoneCountry(country)}
-                  placeholder="(51) 99999-9999"
+                  placeholder={t('contact.phonePlaceholder')}
                   autoComplete="tel"
                   smartCaret
                 />
               </div>
               <p style={{ fontSize: 11, color: '#9A8E85', margin: '6px 0 0' }}>
-                Selecione o país e informe seu número com DDD. A confirmação será enviada por WhatsApp.
+                {t('contact.phoneHint')}
               </p>
             </div>
           </div>

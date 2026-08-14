@@ -597,7 +597,7 @@
     },
     "services": {
       "empty": "Ancora nessun servizio",
-          "table": {
+      "table": {
         "name": "Nome",
         "category": "Categoria",
         "price": "Prezzo",
@@ -829,7 +829,8 @@
       "emailPlaceholder": "tuoindirizzo@esempio.com",
       "booking": "Conferma in corso…",
       "confirm": "Conferma prenotazione — {price}",
-      "noRegistration": "Nessuna registrazione richiesta"
+      "noRegistration": "Nessuna registrazione richiesta",
+      "phoneHint": "Seleziona il paese e inserisci il numero con prefisso. Conferma e promemoria verranno inviati tramite WhatsApp."
     },
     "success": {
       "heading": "Prenotazione confermata!",
@@ -1129,7 +1130,7 @@
     }
   },
   "newClient": {
-      "title": "Nuovo cliente",
+    "title": "Nuovo cliente",
     "backToClients": "← Clienti",
     "fields": {
       "name": "Nome completo *",

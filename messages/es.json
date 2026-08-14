@@ -830,7 +830,8 @@
       "emailPlaceholder": "tu@ejemplo.com",
       "booking": "Confirmando…",
       "confirm": "Confirmar reserva — {price}",
-      "noRegistration": "Sin registro requerido"
+      "noRegistration": "Sin registro requerido",
+      "phoneHint": "Selecciona tu país e introduce tu número con código de área. La confirmación y los recordatorios se enviarán por WhatsApp."
     },
     "success": {
       "heading": "¡Reserva confirmada!",

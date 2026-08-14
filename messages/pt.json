@@ -768,7 +768,7 @@
         },
         "inventory": {
           "label": "Estoque",
-          "description": "Stock, produtos, alertas de estoque baixo"
+          "description": "Estoque, produtos e alertas de estoque baixo"
         },
         "notifications": {
           "label": "Notificações",
@@ -824,13 +824,14 @@
       "back": "← Voltar",
       "nameLabel": "Nome *",
       "namePlaceholder": "Seu nome",
-      "phoneLabel": "Telefone",
-      "phonePlaceholder": "+55 11 99999-9999",
+      "phoneLabel": "WhatsApp *",
+      "phonePlaceholder": "(51) 99999-9999",
       "emailLabel": "E-mail",
       "emailPlaceholder": "voce@exemplo.com",
       "booking": "Confirmando…",
       "confirm": "Confirmar agendamento — {price}",
-      "noRegistration": "Sem cadastro necessário"
+      "noRegistration": "Sem cadastro necessário",
+      "phoneHint": "Selecione o país e informe seu número com DDD. A confirmação e os lembretes serão enviados pelo WhatsApp."
     },
     "success": {
       "heading": "Agendamento confirmado!",
@@ -847,11 +848,11 @@
     "spotsLeft": "{count} vagas disponíveis",
     "continueButton": "Continuar →",
     "at": "às",
-    "errorContactRequired": "Por favor informe pelo menos um telefone ou e-mail para confirmar seu agendamento.",
-    "errorPhone": "Por favor informe um número de telefone válido (somente dígitos, ex. +55 11 99999-9999).",
+    "errorContactRequired": "Informe seu WhatsApp para confirmar o agendamento.",
+    "errorPhone": "Informe um número de WhatsApp válido com DDD.",
     "errorEmail": "Por favor informe um endereço de e-mail válido (ex. nome@exemplo.com).",
     "errorRateLimit": "Muitas tentativas de agendamento. Por favor aguarde alguns minutos e tente novamente.",
-    "errorGeneric": "Algo deu errado. Por favor tente novamente ou entre em contato com o estabelecimento."
+    "errorGeneric": "Não foi possível concluir o agendamento. Tente novamente ou entre em contato com o estabelecimento."
   },
   "contact": {
     "heading": "Fale conosco",

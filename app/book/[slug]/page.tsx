@@ -5,8 +5,10 @@ import { notFound } from 'next/navigation'
 import { PublicBookingForm } from './booking-form'
 import { getTelegramBotInfo } from '@/lib/telegram'
 import { getViberBotInfo } from '@/lib/viber'
+import { getTranslations } from 'next-intl/server'
 
 export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const t = await getTranslations('publicBooking')
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('businesses')
@@ -15,11 +17,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     .maybeSingle()
 
   return {
-    title: data ? `Book at ${data.name}` : 'Book appointment',
+    title: data ? `${t('bookAnAppointment')} — ${data.name}` : t('bookAnAppointment'),
   }
 }
 
 export default async function PublicBookingPage({ params }: { params: { slug: string } }) {
+  const t = await getTranslations('publicBooking')
   const supabase = createServiceClient()
 
   // Public data — brand_color included for warm/premium design
@@ -95,7 +98,7 @@ export default async function PublicBookingPage({ params }: { params: { slug: st
           )}
           <div>
             <div style={{ fontSize: 15, fontWeight: 500, color: '#2D2926' }}>{business.name}</div>
-            <div style={{ fontSize: 12, color: '#9A8E85' }}>Book an appointment</div>
+            <div style={{ fontSize: 12, color: '#9A8E85' }}>{t('bookAnAppointment')}</div>
           </div>
         </div>
       </header>
