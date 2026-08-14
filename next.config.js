@@ -1,10 +1,20 @@
 const createNextIntlPlugin = require('next-intl/plugin')
+
+// next-pwa relies on Node-specific globals during its generated runtime bundle.
+// On Vercel, middleware runs on the Edge Runtime, where globals such as
+// __dirname are not available. Keep PWA enabled for normal self-hosted/Docker
+// production builds, but disable it automatically on Vercel and whenever
+// DISABLE_PWA=true is explicitly provided.
+const disablePWA =
+  process.env.NODE_ENV === 'development' ||
+  process.env.VERCEL === '1' ||
+  process.env.DISABLE_PWA === 'true'
+
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
   skipWaiting: true,
-  // Disable in development to avoid confusing caching during dev
-  disable: process.env.NODE_ENV === 'development',
+  disable: disablePWA,
   // Prevent caching Next.js internal manifests (causes build errors with App Router)
   buildExcludes: [/middleware-manifest\.json$/, /app-build-manifest\.json$/],
   // Offline fallback: serve /offline when a navigation request fails
