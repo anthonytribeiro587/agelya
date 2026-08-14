@@ -1,0 +1,129 @@
+name: Booking phone one-time fix v2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/booking-phone-fix-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install international phone input
+        run: npm install react-phone-number-input@3.4.17 --save
+
+      - name: Patch booking flow
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+
+          // Fix /api/book runtime: remove DOMPurify and accept only normalized E.164 WhatsApp.
+          {
+            const path = 'app/api/book/route.ts'
+            let s = fs.readFileSync(path, 'utf8')
+            s = s.replace("import DOMPurify from 'isomorphic-dompurify'\n", '')
+            s = s.replace(
+              "function sanitize(s: string): string {\n  return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()\n}",
+              "function sanitize(s: string): string {\n  return s.replace(/[<>]/g, '').replace(/[\\u0000-\\u001F\\u007F]/g, '').trim()\n}"
+            )
+            s = s.replace(
+              "  phone:      z.string().max(30).optional().nullable(),",
+              "  phone:      z.string().regex(/^\\+[1-9]\\d{7,14}$/, 'Invalid E.164 phone number'),"
+            )
+            s = s.replace(
+              "  const { businessId, serviceId, employeeId, date, time, phone, email } = parsed.data",
+              "  const { businessId, serviceId, employeeId, date, time, phone } = parsed.data\n  const email = null"
+            )
+            s = s.replace(/\n  if \(!phone && !email\) \{[\s\S]*?\n  \}\n\n  const supabase/, '\n\n  const supabase')
+            s = s.replace("    if (email) orParts.push(`email.eq.${email}`)\n", '')
+            s = s.replace("      const updates: { name?: string; email?: string } = {}", "      const updates: { name?: string } = {}")
+            s = s.replace("      if (email && email !== existing.email) updates.email = email\n", '')
+            s = s.replace("          email: email || null,", "          email: null,")
+            s = s.replace("    body: JSON.stringify({ appointmentId: appt.id, formEmail: email || null }),", "    body: JSON.stringify({ appointmentId: appt.id }),")
+            s = s.replaceAll('[api/book] email/confirm', '[api/book] booking/confirm')
+            fs.writeFileSync(path, s)
+          }
+
+          // Improve public booking phone field, keeping legacy messenger success code untouched.
+          {
+            const path = 'app/book/[slug]/booking-form.tsx'
+            let s = fs.readFileSync(path, 'utf8')
+
+            s = s.replace(
+              "import { useTranslations } from 'next-intl'",
+              "import { useTranslations } from 'next-intl'\nimport PhoneInput, { getCountries, isValidPhoneNumber, type Country } from 'react-phone-number-input'\nimport ptPhoneLabels from 'react-phone-number-input/locale/pt.json'"
+            )
+
+            s = s.replace(
+              "  const [contact, setContact] = useState({ name: '', phone: '', email: '' })",
+              "  const [contact, setContact] = useState<{ name: string; phone?: string }>({ name: '', phone: undefined })\n  const [phoneCountry, setPhoneCountry] = useState<Country>('BR')"
+            )
+
+            const existingEffect = '  useEffect(() => {\n    if (!date || !selectedService) {'
+            if (!s.includes('const availablePhoneCountries')) {
+              const countryEffect = `  useEffect(() => {\n    const availablePhoneCountries = new Set(getCountries())\n    const localeRegion = navigator.language.split('-')[1]?.toUpperCase() as Country | undefined\n    if (localeRegion && availablePhoneCountries.has(localeRegion)) {\n      setPhoneCountry(localeRegion)\n      return\n    }\n\n    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone\n    if (tz.startsWith('Australia/')) setPhoneCountry('AU')\n    else if (tz === 'Europe/Lisbon' || tz === 'Atlantic/Madeira' || tz === 'Atlantic/Azores') setPhoneCountry('PT')\n    else if (tz.startsWith('America/')) setPhoneCountry('BR')\n  }, [])\n\n${existingEffect}`
+              s = s.replace(existingEffect, countryEffect)
+            }
+
+            const validationStart = s.indexOf('    if (!contact.phone && !contact.email) {')
+            const validationEnd = s.indexOf('    setSaving(true)', validationStart)
+            if (validationStart === -1 || validationEnd === -1) throw new Error('validation markers not found')
+            s = s.slice(0, validationStart) + `    if (!contact.phone || !isValidPhoneNumber(contact.phone)) {\n      setBookingError('Informe um número de WhatsApp válido com DDD.')\n      return\n    }\n` + s.slice(validationEnd)
+
+            s = s.replace('          phone: contact.phone || null,\n          email: contact.email || null,', '          phone: contact.phone,\n          email: null,')
+            s = s.replace("    setContact({ name: '', phone: '', email: '' })", "    setContact({ name: '', phone: undefined })")
+
+            const fieldsStart = s.indexOf("          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>")
+            const fieldsEnd = s.indexOf('\n\n          {bookingError && (', fieldsStart)
+            if (fieldsStart === -1 || fieldsEnd === -1) throw new Error('contact fields markers not found')
+
+            const fields = `          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>\n            <div>\n              <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>Nome *</label>\n              <input\n                type="text"\n                value={contact.name}\n                onChange={(e) => setContact((c) => ({ ...c, name: e.target.value }))}\n                placeholder="Seu nome"\n                autoComplete="name"\n                style={{ border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#2D2926', width: '100%', background: 'white', outline: 'none', boxSizing: 'border-box' }}\n              />\n            </div>\n\n            <div>\n              <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>WhatsApp *</label>\n              <div className="agelya-phone-input">\n                <PhoneInput\n                  key={phoneCountry}\n                  labels={ptPhoneLabels}\n                  defaultCountry={phoneCountry}\n                  value={contact.phone}\n                  onChange={(value) => {\n                    setContact((c) => ({ ...c, phone: value }))\n                    setBookingError(null)\n                  }}\n                  onCountryChange={(country) => country && setPhoneCountry(country)}\n                  placeholder="(51) 99999-9999"\n                  autoComplete="tel"\n                  smartCaret\n                />\n              </div>\n              <p style={{ fontSize: 11, color: '#9A8E85', margin: '6px 0 0' }}>\n                Selecione o país e informe seu número com DDD. A confirmação será enviada por WhatsApp.\n              </p>\n            </div>\n          </div>`
+            s = s.slice(0, fieldsStart) + fields + s.slice(fieldsEnd)
+
+            s = s.replace('Something went wrong. Please try again or contact the business directly.', 'Não foi possível concluir o agendamento. Tente novamente.')
+            s = s.replace('Your details', 'Seus dados')
+            fs.writeFileSync(path, s)
+          }
+
+          // Add package CSS globally.
+          {
+            const path = 'app/layout.tsx'
+            let s = fs.readFileSync(path, 'utf8')
+            if (!s.includes("react-phone-number-input/style.css")) {
+              s = s.replace("import './globals.css'", "import 'react-phone-number-input/style.css'\nimport './globals.css'")
+            }
+            fs.writeFileSync(path, s)
+          }
+
+          // Match Agelya visual language.
+          {
+            const path = 'app/globals.css'
+            let s = fs.readFileSync(path, 'utf8')
+            if (!s.includes('.agelya-phone-input')) {
+              s += `\n\n/* Public booking — international WhatsApp input */\n.agelya-phone-input {\n  border: 0.5px solid #E8E0D8;\n  border-radius: 10px;\n  background: #fff;\n  padding: 0 14px;\n  transition: border-color .15s ease, box-shadow .15s ease;\n}\n.agelya-phone-input:focus-within {\n  border-color: var(--brand);\n  box-shadow: 0 0 0 2px var(--brand-light);\n}\n.agelya-phone-input .PhoneInput { min-height: 46px; }\n.agelya-phone-input .PhoneInputCountry {\n  margin-right: 10px;\n  padding-right: 10px;\n  border-right: 1px solid #eee6df;\n}\n.agelya-phone-input .PhoneInputCountryFlag {\n  width: 24px;\n  height: 16px;\n  border-radius: 3px;\n  overflow: hidden;\n}\n.agelya-phone-input .PhoneInputInput {\n  border: 0;\n  outline: 0;\n  background: transparent;\n  color: #2D2926;\n  font-size: 14px;\n  min-width: 0;\n}\n`
+            }
+            fs.writeFileSync(path, s)
+          }
+          NODE
+
+      - name: Build
+        env:
+          DISABLE_PWA: 'true'
+        run: npm run build
+
+      - name: Commit changes
+        run: |
+          git config user.name "Agelya Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add package.json package-lock.json app/api/book/route.ts 'app/book/[slug]/booking-form.tsx' app/layout.tsx app/globals.css
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: booking flow and international WhatsApp phone input"
+          git push
