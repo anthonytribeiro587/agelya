@@ -1,51 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { sendBookingConfirmation, formatEmailDate, formatEmailTime } from '@/lib/email'
-import { buildGCalUrlFromISO } from '@/lib/gcal'
-import { sendTelegramMessage, tplNewBooking, tplReminderClient as tgTplConfirmClient } from '@/lib/telegram'
-import { sendViberMessage, tplNewBooking as viberTplNewBooking } from '@/lib/viber'
-import { sendWhatsAppMessage, tplBookingConfirmation as waTplBookingConfirmation } from '@/lib/whatsapp'
+import { sendEvolutionText } from '@/lib/evolution'
 
-// Telegram confirmation template for client
-function tplConfirmClient(opts: {
-  clientName: string
-  serviceName: string
-  date: string
-  time: string
-  businessName: string
-  address?: string
-}): string {
-  const lines = [
-    `✅ <b>Booking confirmed!</b>`,
-    ``,
-    `👤 ${opts.clientName}`,
-    `📋 ${opts.serviceName}`,
-    `🕐 ${opts.date} at ${opts.time}`,
-    `🏠 ${opts.businessName}`,
-  ]
-  if (opts.address) lines.push(`📍 ${opts.address}`)
-  lines.push(``, `We'll remind you before the appointment.`)
-  return lines.join('\n')
+// Legacy route name kept so the public booking flow does not break. Agelya now
+// uses this endpoint exclusively for WhatsApp via Evolution API.
+
+function formatDate(iso: string, timezone: string) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: timezone,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(iso))
 }
 
-function viberTplConfirmClient(opts: {
+function formatTime(iso: string, timezone: string) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso))
+}
+
+function bookingConfirmationMessage(opts: {
   clientName: string
   serviceName: string
   date: string
   time: string
   businessName: string
+  employeeName?: string
   address?: string
-}): string {
+}) {
   const lines = [
-    `✅ Booking confirmed!`,
-    ``,
-    `👤 ${opts.clientName}`,
-    `📋 ${opts.serviceName}`,
-    `🕐 ${opts.date} at ${opts.time}`,
-    `🏠 ${opts.businessName}`,
+    '✅ *Agendamento confirmado!*',
+    '',
+    `Olá, ${opts.clientName}! Seu horário foi agendado com sucesso.`,
+    '',
+    `📋 Serviço: ${opts.serviceName}`,
+    `📅 Data: ${opts.date}`,
+    `🕐 Horário: ${opts.time}`,
   ]
+  if (opts.employeeName) lines.push(`👤 Profissional: ${opts.employeeName}`)
   if (opts.address) lines.push(`📍 ${opts.address}`)
-  lines.push(``, `We'll remind you before the appointment.`)
+  lines.push('', `Até lá! — ${opts.businessName}`)
   return lines.join('\n')
 }
 
@@ -57,14 +55,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     }
     if (!expectedSecret) {
-      console.warn('[email/confirm] INTERNAL_API_SECRET is not set — endpoint is unprotected. Set it in .env for production.')
+      console.warn('[booking/confirm] INTERNAL_API_SECRET is not set.')
     }
 
-    const { appointmentId, formEmail } = await req.json()
-    if (!appointmentId) return NextResponse.json({ error: 'missing appointmentId' }, { status: 400 })
+    const { appointmentId } = await req.json()
+    if (!appointmentId) {
+      return NextResponse.json({ error: 'missing appointmentId' }, { status: 400 })
+    }
 
-    // Используем service role — этот роут вызывается server-to-server (из /api/book),
-    // без cookies пользователя, поэтому анонимный клиент блокировался бы RLS.
     const supabase = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -72,176 +70,85 @@ export async function POST(req: NextRequest) {
 
     const { data: appt, error: apptErr } = await supabase
       .from('appointments')
-      .select('id, starts_at, business_id, source, services(name, duration_min), employees(name), clients(name, email, whatsapp_number, telegram_id, viber_user_id)')
+      .select('id, starts_at, business_id, services(name), employees(name), clients(name, whatsapp_number)')
       .eq('id', appointmentId)
       .single()
 
-    if (apptErr) console.error('[email/confirm] appointment fetch error:', apptErr.message)
+    if (apptErr) console.error('[booking/confirm] appointment fetch:', apptErr.message)
     if (!appt) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-    const client = appt.clients as unknown as {
-      name: string
-      email: string | null
-      whatsapp_number: string | null
-      telegram_id: string | null
-      viber_user_id: string | null
-    } | null
-    const service = appt.services as unknown as { name: string; duration_min: number } | null
+    const client = appt.clients as unknown as { name: string; whatsapp_number: string | null } | null
+    const service = appt.services as unknown as { name: string } | null
     const employee = appt.employees as unknown as { name: string } | null
 
-    const { data: biz } = await supabase
-      .from('businesses')
-      .select('name, address, slug, timezone, telegram_bot_token, telegram_chat_id, viber_bot_token, viber_chat_id, meta_whatsapp_phone_number_id, meta_whatsapp_access_token')
-      .eq('id', appt.business_id)
-      .single()
-
-    const tz = biz?.timezone ?? 'UTC'
-    const date = formatEmailDate(appt.starts_at, tz)
-    const time = formatEmailTime(appt.starts_at, tz)
-
-    // ── Telegram → владельцу ────────────────────────────────────────────────
-    if (biz?.telegram_bot_token && biz?.telegram_chat_id) {
-      await sendTelegramMessage(
-        biz.telegram_bot_token,
-        biz.telegram_chat_id,
-        tplNewBooking({
-          clientName: client?.name ?? 'Walk-in',
-          serviceName: service?.name ?? '—',
-          date,
-          time,
-          employeeName: employee?.name,
-          source: appt.source ?? undefined,
-        })
-      )
+    if (!client?.whatsapp_number) {
+      return NextResponse.json({ sent: true, whatsapp: 'skipped: no phone' })
     }
 
-    // ── Telegram → клиенту (если уже подключён) ─────────────────────────────
-    if (biz?.telegram_bot_token && client?.telegram_id) {
-      await sendTelegramMessage(
-        biz.telegram_bot_token,
-        client.telegram_id,
-        tplConfirmClient({
-          clientName: client.name,
-          serviceName: service?.name ?? '—',
-          date,
-          time,
-          businessName: biz.name,
-          address: biz.address ?? undefined,
-        })
-      )
+    const [{ data: biz }, { data: evolution }] = await Promise.all([
+      supabase
+        .from('businesses')
+        .select('name, address, timezone')
+        .eq('id', appt.business_id)
+        .single(),
+      supabase
+        .from('business_evolution_config')
+        .select('api_url, api_key, instance_name, enabled')
+        .eq('business_id', appt.business_id)
+        .maybeSingle(),
+    ])
+
+    if (!evolution?.enabled || !evolution.api_url || !evolution.api_key || !evolution.instance_name) {
+      return NextResponse.json({ sent: true, whatsapp: 'skipped: Evolution disabled' })
     }
 
-    // ── Viber → владельцу ───────────────────────────────────────────────────
-    if (biz?.viber_bot_token && biz?.viber_chat_id) {
-      await sendViberMessage(
-        biz.viber_bot_token,
-        biz.viber_chat_id,
-        viberTplNewBooking({
-          clientName: client?.name ?? 'Walk-in',
-          serviceName: service?.name ?? '—',
-          date,
-          time,
-          employeeName: employee?.name,
-          source: appt.source ?? undefined,
-        })
-      )
-    }
-
-    // ── Viber → клиенту (если уже подключён) ────────────────────────────────
-    if (biz?.viber_bot_token && client?.viber_user_id) {
-      await sendViberMessage(
-        biz.viber_bot_token,
-        client.viber_user_id,
-        viberTplConfirmClient({
-          clientName: client.name,
-          serviceName: service?.name ?? '—',
-          date,
-          time,
-          businessName: biz.name,
-          address: biz.address ?? undefined,
-        })
-      )
-    }
-
-    // ── WhatsApp → клиенту ──────────────────────────────────────────────────
-    const waCredentials = biz?.meta_whatsapp_phone_number_id && biz?.meta_whatsapp_access_token
-      ? { phoneNumberId: biz.meta_whatsapp_phone_number_id, accessToken: biz.meta_whatsapp_access_token }
-      : undefined
-    if (client?.whatsapp_number) {
-      await sendWhatsAppMessage(
-        client.whatsapp_number,
-        waTplBookingConfirmation({
-          clientName: client.name,
-          serviceName: service?.name ?? '—',
-          date,
-          time,
-          businessName: biz?.name ?? '',
-          employeeName: employee?.name,
-          address: biz?.address ?? undefined,
-        }),
-        waCredentials
-      )
-    }
-
-    // ── Email → клиенту ─────────────────────────────────────────────────────
-    // Prefer the email submitted in the booking form (formEmail) over the one stored in DB,
-    // since the DB record may belong to an existing client found by phone who has a different email.
-    const recipientEmail = formEmail || client?.email
-    if (!recipientEmail) {
-      return NextResponse.json({ sent: true, email: 'skipped: no client email' })
-    }
-
-    // Check dedup BEFORE sending — log record is written only after a successful send,
-    // so a failed send leaves no trace and can be retried freely.
     const { data: alreadySent } = await supabase
       .from('notification_log')
       .select('id')
       .eq('business_id', appt.business_id)
       .eq('ref_id', appt.id)
       .eq('type', 'confirm')
-      .eq('channel', 'email')
+      .eq('channel', 'whatsapp')
       .maybeSingle()
 
     if (alreadySent) {
-      return NextResponse.json({ sent: true, email: 'skipped: already sent' })
+      return NextResponse.json({ sent: true, whatsapp: 'skipped: already sent' })
     }
 
-    const calendarUrl = buildGCalUrlFromISO({
-      businessName: biz?.name ?? '',
-      serviceName: service?.name ?? '',
-      employeeName: employee?.name ?? null,
-      startsAt: appt.starts_at,
-      durationMin: service?.duration_min ?? 60,
-      timezone: tz,
-      address: biz?.address ?? null,
-    })
-
-    await sendBookingConfirmation({
-      to: recipientEmail,
-      clientName: client?.name ?? 'Guest',
-      businessName: biz?.name ?? 'Your appointment',
-      serviceName: service?.name ?? '—',
-      date,
-      time,
+    const timezone = biz?.timezone ?? 'America/Sao_Paulo'
+    const message = bookingConfirmationMessage({
+      clientName: client.name,
+      serviceName: service?.name ?? 'Atendimento',
+      date: formatDate(appt.starts_at, timezone),
+      time: formatTime(appt.starts_at, timezone),
+      businessName: biz?.name ?? 'Agelya',
       employeeName: employee?.name ?? undefined,
       address: biz?.address ?? undefined,
-      calendarUrl,
     })
 
-    // Record only after a confirmed successful send
+    await sendEvolutionText(
+      {
+        apiUrl: evolution.api_url,
+        apiKey: evolution.api_key,
+        instance: evolution.instance_name,
+      },
+      client.whatsapp_number,
+      message
+    )
+
     const { error: logErr } = await supabase.from('notification_log').insert({
       business_id: appt.business_id,
       ref_id: appt.id,
       type: 'confirm',
-      channel: 'email',
+      channel: 'whatsapp',
     })
     if (logErr && logErr.code !== '23505') {
-      console.error('[email/confirm] notification_log insert error:', logErr.message)
+      console.error('[booking/confirm] notification log:', logErr.message)
     }
 
-    return NextResponse.json({ sent: true })
+    return NextResponse.json({ sent: true, whatsapp: 'sent' })
   } catch (err) {
-    console.error('[email/confirm]', err)
+    console.error('[booking/confirm]', err)
     return NextResponse.json({ error: 'internal' }, { status: 500 })
   }
 }
