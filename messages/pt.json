@@ -789,7 +789,8 @@
     "signOut": "Sair",
     "shareFeedback": "Compartilhar opinião",
     "openMenu": "Abrir menu",
-    "closeMenu": "Fechar menu"
+    "closeMenu": "Fechar menu",
+    "automations": "Automações"
   },
   "publicBooking": {
     "bookAnAppointment": "Agendar um horário",
@@ -841,7 +842,9 @@
       "optInHeading": "Receba lembretes no seu mensageiro",
       "optInSub": "Toque abaixo para receber lembretes de agendamentos pelo Telegram ou Viber — sem cadastro.",
       "telegramButton": "Lembretes pelo Telegram",
-      "viberButton": "Lembretes pelo Viber"
+      "viberButton": "Lembretes pelo Viber",
+      "pendingHeading": "Horário reservado!",
+      "pendingBody": "Enviamos uma mensagem no WhatsApp. Responda SIM para confirmar seu agendamento."
     },
     "loadingTimes": "Carregando horários disponíveis…",
     "dayClosed": "Este dia está fora do horário de trabalho. Por favor escolha outra data.",
@@ -1213,5 +1216,59 @@
     },
     "submitButton": "Adicionar item",
     "cancelButton": "Cancelar"
+  },
+  "automations": {
+    "title": "Automações",
+    "subtitle": "Defina quando e o que a Agelya envia automaticamente pelo WhatsApp.",
+    "loading": "Carregando automações…",
+    "loadError": "Não foi possível carregar as automações.",
+    "saveError": "Não foi possível salvar a automação.",
+    "createError": "Não foi possível criar a automação.",
+    "deleteError": "Não foi possível excluir a automação.",
+    "deleteConfirm": "Excluir esta automação?",
+    "evolutionTitle": "WhatsApp — Evolution API",
+    "evolutionConnected": "Conectado e pronto para enviar mensagens automáticas.",
+    "evolutionDisconnected": "Conecte e ative a Evolution API para usar as automações.",
+    "openNotifications": "Abrir configurações",
+    "webhookTitle": "Receber confirmação do cliente",
+    "webhookDescription": "Ative o webhook para a Agelya reconhecer respostas como “SIM” e confirmar o agendamento automaticamente.",
+    "webhookButton": "Ativar confirmações",
+    "webhookReady": "Confirmações por resposta do WhatsApp estão configuradas.",
+    "webhookError": "Não foi possível configurar as confirmações pela Evolution API.",
+    "rulesTitle": "Regras de mensagens",
+    "rulesSubtitle": "Ative os padrões ou crie seus próprios envios.",
+    "newAutomation": "Nova automação",
+    "createTitle": "Criar automação",
+    "nameLabel": "Nome da automação",
+    "namePlaceholder": "Ex.: Lembrete 2 horas antes",
+    "whenLabel": "Quando enviar",
+    "beforeAppointment": "Antes do agendamento",
+    "afterAppointment": "Depois do atendimento",
+    "messageLabel": "Mensagem do WhatsApp",
+    "offsetLabel": "Intervalo",
+    "variablesHelp": "Use as variáveis abaixo; a Agelya substitui automaticamente pelos dados do agendamento.",
+    "defaultBadge": "Padrão",
+    "replyBadge": "Confirma resposta",
+    "replyConfirmationTitle": "Confirmar quando o cliente responder SIM",
+    "replyConfirmationDescription": "A resposta recebida pelo WhatsApp muda o agendamento para Confirmado e registra a data da confirmação.",
+    "edit": "Editar automação",
+    "save": "Salvar alterações",
+    "cancel": "Cancelar",
+    "create": "Criar automação",
+    "delete": "Excluir",
+    "howItWorksTitle": "Como funciona",
+    "howItWorksDescription": "A Agelya verifica periodicamente as regras ativas. Cada mensagem enviada é registrada para evitar duplicidade. Os textos usam a mesma instância da Evolution API configurada no seu negócio.",
+    "timing": {
+      "created": "Imediatamente após o agendamento",
+      "before": "{value} {unit} antes do agendamento",
+      "after": "{value} {unit} depois do atendimento",
+      "reactivation": "{value} {unit} após a última visita",
+      "birthday": "No aniversário do cliente"
+    },
+    "units": {
+      "minutes": "minuto(s)",
+      "hours": "hora(s)",
+      "days": "dia(s)"
+    }
   }
 }

@@ -316,6 +316,8 @@ export type Database = {
           price: number | null
           notes: string | null
           source: string
+          client_confirmed_at: string | null
+          client_confirmation_text: string | null
           created_at: string
           updated_at: string
         }
@@ -331,6 +333,8 @@ export type Database = {
           price?: number | null
           notes?: string | null
           source?: string
+          client_confirmed_at?: string | null
+          client_confirmation_text?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -591,6 +595,112 @@ export type Database = {
             foreignKeyName: "notification_log_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      business_automation_rules: {
+        Row: {
+          id: string
+          business_id: string
+          rule_key: string
+          name: string
+          event_type: string
+          offset_minutes: number
+          enabled: boolean
+          message_template: string
+          requires_reply_confirmation: boolean
+          confirmation_keywords: string[]
+          is_system: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          rule_key: string
+          name: string
+          event_type: string
+          offset_minutes?: number
+          enabled?: boolean
+          message_template: string
+          requires_reply_confirmation?: boolean
+          confirmation_keywords?: string[]
+          is_system?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          rule_key?: string
+          name?: string
+          event_type?: string
+          offset_minutes?: number
+          enabled?: boolean
+          message_template?: string
+          requires_reply_confirmation?: boolean
+          confirmation_keywords?: string[]
+          is_system?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_automation_rules_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      business_evolution_config: {
+        Row: {
+          business_id: string
+          api_url: string
+          api_key: string
+          instance_name: string
+          enabled: boolean
+          last_status: string | null
+          last_checked_at: string | null
+          webhook_secret: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          api_url: string
+          api_key: string
+          instance_name: string
+          enabled?: boolean
+          last_status?: string | null
+          last_checked_at?: string | null
+          webhook_secret?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          api_url?: string
+          api_key?: string
+          instance_name?: string
+          enabled?: boolean
+          last_status?: string | null
+          last_checked_at?: string | null
+          webhook_secret?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_evolution_config_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           }

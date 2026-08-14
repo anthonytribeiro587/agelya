@@ -20,8 +20,8 @@ interface Props {
   services: Service[]
   employees: Employee[]
   workingHours: DayHours[]
-  telegramBotUsername: string | null
-  viberBotUri: string | null
+  telegramBotUsername?: string | null
+  viberBotUri?: string | null
 }
 
 type Step = 'service' | 'employee' | 'datetime' | 'contact' | 'done'
@@ -116,6 +116,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   const [bookingError, setBookingError] = useState<string | null>(null)
   const [clientId, setClientId] = useState<string | null>(null)
   const [clientHasTelegram, setClientHasTelegram] = useState(false)
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false)
 
   const [availableSlots, setAvailableSlots] = useState<string[]>([])
   const [slotSpotsLeft, setSlotSpotsLeft] = useState<Record<string, number>>({})
@@ -301,6 +302,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       const data = await res.json()
       setClientId(data.clientId ?? null)
       setClientHasTelegram(data.hasTelegram ?? false)
+      setAwaitingConfirmation(Boolean(data.awaitingConfirmation))
       setStep('done')
       setSaving(false)
     } catch {
@@ -332,6 +334,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
     setAvailableSlots([])
     setClientId(null)
     setClientHasTelegram(false)
+    setAwaitingConfirmation(false)
     setBookingError(null)
   }
 
@@ -367,12 +370,12 @@ export function PublicBookingForm({ business, services, employees, workingHours,
           <path d="M17 28L24 35L39 20" stroke="var(--brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
 
-        <h2 style={{ fontSize: 20, fontWeight: 500, color: '#2D2926', margin: '0 0 8px' }}>{t('success.heading')}</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 500, color: '#2D2926', margin: '0 0 8px' }}>{t(awaitingConfirmation ? 'success.pendingHeading' : 'success.heading')}</h2>
         <p style={{ fontSize: 14, color: '#9A8E85', margin: '0 0 4px' }}>
           {selectedService?.name} · {date} às {time ? formatSlot(time) : ''}
           {selectedEmployeeObj && ` · ${selectedEmployeeObj.name}`}
         </p>
-        <p style={{ fontSize: 14, color: '#9A8E85', margin: '0 0 24px' }}>{t('success.body')}</p>
+        <p style={{ fontSize: 14, color: '#9A8E85', margin: '0 0 24px' }}>{t(awaitingConfirmation ? 'success.pendingBody' : 'success.body')}</p>
 
         {/* Messenger opt-in — hidden if client already has Telegram connected */}
         {!clientHasTelegram && (telegramLink || viberLink) && (
@@ -415,7 +418,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'white', border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 20px', fontSize: 14, color: '#2D2926', textDecoration: 'none', fontWeight: 500 }}
           >
             <CalendarPlus style={{ width: 16, height: 16 }} />
-            Adicionar ao Google Agenda
+            {t('addToGoogleCalendar')}
           </a>
           <button onClick={resetAll}
             style={{ background: 'white', border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 20px', fontSize: 14, color: '#2D2926', cursor: 'pointer', fontWeight: 500 }}>
@@ -432,7 +435,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {/* ── Step 1: Service ───────────────────────────────────────────────── */}
       {step === 'service' && (
         <div>
-          <StepBadge label="Escolha o serviço" />
+          <StepBadge label={t('stepSelectService')} />
           <SectionTitle text={t('selectService.heading')} />
           {services.length === 0 ? (
             <p style={{ fontSize: 14, color: '#9A8E85' }}>{t('selectService.empty')}</p>
@@ -457,7 +460,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {step === 'employee' && selectedService && (
         <div>
           <BackLink label={t('selectEmployee.back')} onClick={handleBackFromEmployee} />
-          <StepBadge label="Escolha o profissional" />
+          <StepBadge label={t('stepChooseSpecialist')} />
           <SectionTitle text={t('selectEmployee.heading')} />
           <p style={{ fontSize: 13, color: '#9A8E85', marginTop: -8, marginBottom: 14 }}>{selectedService.name}</p>
 
@@ -487,12 +490,12 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {step === 'datetime' && selectedService && (
         <div>
           <BackLink label={t('datetime.back')} onClick={handleBackFromDatetime} />
-          <StepBadge label="Data e horário" />
+          <StepBadge label={t('stepDatetime')} />
           <SectionTitle text={t('datetime.heading')} />
 
           {slotTakenError && (
             <div style={{ marginBottom: 16, padding: 12, background: '#FFF8ED', border: '0.5px solid #F5C842', borderRadius: 10, fontSize: 13, color: '#7A5C00' }}>
-              ⚠ Este horário acabou de ser reservado. Escolha outro horário.
+              {t('slotTaken')}
             </div>
           )}
 
@@ -518,15 +521,15 @@ export function PublicBookingForm({ business, services, employees, workingHours,
               {loadingSlots ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#9A8E85' }}>
                   <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
-                  Carregando horários disponíveis&hellip;
+                  {t('loadingTimes')}
                 </div>
               ) : dayClosed ? (
                 <div style={{ padding: 12, background: '#F5F0EB', borderRadius: 10, fontSize: 14, color: '#9A8E85' }}>
-                  Este dia está fora do horário de atendimento. Escolha outra data.
+                  {t('dayClosed')}
                 </div>
               ) : availableSlots.length === 0 ? (
                 <div style={{ padding: 12, background: '#F5F0EB', borderRadius: 10, fontSize: 14, color: '#9A8E85' }}>
-                  Não há horários disponíveis neste dia. Escolha outra data.
+                  {t('noSlots')}
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
