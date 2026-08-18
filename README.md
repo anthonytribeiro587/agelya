@@ -24,6 +24,10 @@ Agelya é uma plataforma de agenda e gestão para profissionais de beleza, bem-e
 - Vercel
 - Evolution API
 
+## Status
+
+MVP em validação final para a primeira implantação com cliente.
+
 ## Próximas etapas do vertical de massoterapia
 
 A estrutura de banco já contempla pacotes de sessões, anamnese, consentimento e evolução de atendimento. As respectivas telas serão incorporadas conforme o produto evoluir.
