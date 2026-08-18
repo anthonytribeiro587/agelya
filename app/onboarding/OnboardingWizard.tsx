@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { completeOnboarding } from './actions'
+import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, ChevronRight, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { useTranslations } from 'next-intl'
+import { Button } from '@/components/ui/button'
+import { completeOnboarding } from './actions'
 
-type Tab = 0 | 1 | 2
+type Step = 0 | 1 | 2
 type SlugStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/
@@ -14,15 +14,10 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/
 function normalizeSlug(value: string) {
   return value
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')
-    .replace(/^-/, '')
-}
-
-function nameToSlug(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 30)
 }
@@ -36,49 +31,33 @@ interface Props {
 
 export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain }: Props) {
   const t = useTranslations('onboarding')
-  const [step, setStep] = useState<Tab>(0)
-  const [bizName, setBizName] = useState(initialName)
-  const [bizType, setBizType] = useState('')
+  const [step, setStep] = useState<Step>(0)
+  const [businessName, setBusinessName] = useState(initialName)
+  const [businessType, setBusinessType] = useState('massage')
   const [service, setService] = useState({ name: '', price: '', duration_min: '60' })
   const [slug, setSlug] = useState(initialSlug)
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
-  const [slugStatus, setSlugStatus] = useState<SlugStatus>(
-    isSaas ? (SLUG_RE.test(initialSlug) ? 'checking' : 'idle') : 'idle'
-  )
+  const [slugStatus, setSlugStatus] = useState<SlugStatus>(isSaas && SLUG_RE.test(initialSlug) ? 'checking' : 'idle')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const noDuration = ['cafe']
-  const showDuration = !noDuration.includes(bizType)
-
   const businessTypes = [
-    { value: 'salon', label: t('businessTypes.salon') },
-    { value: 'barbershop', label: t('businessTypes.barbershop') },
-    { value: 'auto_repair', label: t('businessTypes.auto_repair') },
-    { value: 'cafe', label: t('businessTypes.cafe') },
-    { value: 'dental', label: t('businessTypes.dental') },
-    { value: 'fitness', label: t('businessTypes.fitness') },
     { value: 'massage', label: t('businessTypes.massage') },
+    { value: 'salon', label: t('businessTypes.salon') },
     { value: 'other', label: t('businessTypes.other') },
   ]
 
-  const steps = [
-    t('steps.businessType'),
-    t('steps.firstService'),
-    'WhatsApp',
-  ]
+  const steps = [t('steps.businessType'), t('steps.firstService'), t('steps.notifications')]
 
   useEffect(() => {
     if (!isSaas) return
-
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
     if (!slug) {
       setSlugStatus('idle')
       return
     }
-
     if (!SLUG_RE.test(slug)) {
       setSlugStatus('invalid')
       return
@@ -87,8 +66,8 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
     setSlugStatus('checking')
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/check-slug?slug=${encodeURIComponent(slug)}`)
-        const data = await res.json()
+        const response = await fetch(`/api/check-slug?slug=${encodeURIComponent(slug)}`)
+        const data = await response.json()
         setSlugStatus(data.available ? 'available' : 'taken')
       } catch {
         setSlugStatus('idle')
@@ -100,24 +79,11 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
     }
   }, [slug, isSaas])
 
-  useEffect(() => {
-    if (!isSaas || !initialSlug) return
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const canContinue = Boolean(businessName.trim()) && (!isSaas || slugStatus === 'available')
 
-  const canContinueStep0 =
-    !!bizName.trim() && !!bizType && (!isSaas || slugStatus === 'available')
-
-  function handleBizNameChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const newName = e.target.value
-    setBizName(newName)
-    if (isSaas && !slugManuallyEdited) {
-      setSlug(nameToSlug(newName))
-    }
-  }
-
-  function handleSlugChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setSlugManuallyEdited(true)
-    setSlug(normalizeSlug(e.target.value))
+  function changeBusinessName(value: string) {
+    setBusinessName(value)
+    if (isSaas && !slugManuallyEdited) setSlug(normalizeSlug(value))
   }
 
   async function finish() {
@@ -125,136 +91,100 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
     setError('')
     try {
       await completeOnboarding({
-        bizType,
-        bizName: bizName.trim() || undefined,
+        bizType: businessType,
+        bizName: businessName.trim() || undefined,
         serviceName: service.name,
         servicePrice: Number(service.price),
-        serviceDuration: showDuration ? (Number(service.duration_min) || 60) : 0,
+        serviceDuration: Number(service.duration_min) || 60,
         ...(isSaas ? { slug } : {}),
       })
     } catch {
-      setError('Não foi possível concluir a configuração. Tente novamente.')
+      setError(t('step2.error'))
       setSaving(false)
     }
   }
 
-  function slugStatusText() {
-    switch (slugStatus) {
-      case 'checking': return t('step0.slugChecking')
-      case 'available': return t('step0.slugAvailable')
-      case 'taken': return t('step0.slugTaken')
-      case 'invalid': return t('step0.slugInvalid')
-      default: return ''
-    }
-  }
-
-  function slugStatusColor() {
-    switch (slugStatus) {
-      case 'available': return 'text-green-600'
-      case 'taken':
-      case 'invalid': return 'text-red-500'
-      default: return 'text-gray-400'
-    }
-  }
+  const slugStatusText = {
+    idle: '',
+    checking: t('step0.slugChecking'),
+    available: t('step0.slugAvailable'),
+    taken: t('step0.slugTaken'),
+    invalid: t('step0.slugInvalid'),
+  }[slugStatus]
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
-          <div className="text-2xl font-bold text-blue-600 mb-1">{t('logo')}</div>
+          <div className="text-2xl font-bold text-gray-900 mb-1">Agelya<span className="text-green-600">.</span></div>
           <p className="text-sm text-gray-500">{t('intro')}</p>
         </div>
 
         <div className="flex items-center justify-center gap-3 mb-8">
-          {steps.map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
-                i < step ? 'bg-green-500 text-white' : i === step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'
+          {steps.map((label, index) => (
+            <div key={label} className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
+                index < step ? 'bg-green-500 text-white' : index === step ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-400'
               }`}>
-                {i < step ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
+                {index < step ? <CheckCircle2 className="w-4 h-4" /> : index + 1}
               </div>
-              <span className={`text-xs font-medium hidden sm:block ${i === step ? 'text-gray-900' : 'text-gray-400'}`}>{s}</span>
-              {i < steps.length - 1 && <ChevronRight className="w-4 h-4 text-gray-300" />}
+              <span className={`text-xs font-medium hidden sm:block ${index === step ? 'text-gray-900' : 'text-gray-400'}`}>{label}</span>
+              {index < steps.length - 1 && <ChevronRight className="w-4 h-4 text-gray-300" />}
             </div>
           ))}
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
           {step === 0 && (
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('step0.heading')}</h2>
               <p className="text-sm text-gray-500 mb-6">{t('step0.subheading')}</p>
 
-              <div className="mb-6">
-                <label className="text-xs font-medium text-gray-500 block mb-1">
-                  {t('step0.bizNameLabel')}
-                </label>
-                <input
-                  type="text"
-                  value={bizName}
-                  onChange={handleBizNameChange}
-                  placeholder={t('step0.bizNamePlaceholder')}
-                  maxLength={80}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              <label className="text-xs font-medium text-gray-500 block mb-1">{t('step0.bizNameLabel')}</label>
+              <input
+                value={businessName}
+                onChange={(e) => changeBusinessName(e.target.value)}
+                placeholder={t('step0.bizNamePlaceholder')}
+                maxLength={80}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
 
-              <p className="text-xs font-medium text-gray-500 mb-3">{t('step0.businessTypeLabel')}</p>
-              <div className="grid grid-cols-2 gap-3">
-                {businessTypes.map((bt) => (
-                  <button key={bt.value} onClick={() => setBizType(bt.value)}
+              <p className="text-xs font-medium text-gray-500 mt-6 mb-3">{t('step0.businessTypeLabel')}</p>
+              <div className="grid gap-3">
+                {businessTypes.map((item) => (
+                  <button
+                    key={item.value}
+                    onClick={() => setBusinessType(item.value)}
                     className={`p-4 rounded-xl border text-sm text-left transition-colors ${
-                      bizType === bt.value ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}>
-                    {bt.label}
+                      businessType === item.value ? 'border-green-500 bg-green-50 text-green-700 font-medium' : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    {item.label}
                   </button>
                 ))}
               </div>
 
               {isSaas && (
                 <div className="mt-6 pt-5 border-t border-gray-100">
-                  <label className="text-xs font-medium text-gray-500 block mb-1">
-                    {t('step0.slugLabel')}
-                  </label>
-                  <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
-                    <span className="px-3 py-2.5 bg-gray-50 text-sm text-gray-400 border-r border-gray-200 select-none whitespace-nowrap">
-                      {rootDomain}/
-                    </span>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">{t('step0.slugLabel')}</label>
+                  <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-green-500">
+                    <span className="px-3 py-2.5 bg-gray-50 text-sm text-gray-400 border-r border-gray-200">{rootDomain}/</span>
                     <input
-                      type="text"
                       value={slug}
-                      onChange={handleSlugChange}
+                      onChange={(e) => { setSlugManuallyEdited(true); setSlug(normalizeSlug(e.target.value)) }}
                       maxLength={30}
-                      placeholder="my-business"
-                      className="flex-1 px-3 py-2.5 text-sm focus:outline-none"
+                      placeholder="meu-negocio"
+                      className="flex-1 min-w-0 px-3 py-2.5 text-sm focus:outline-none"
                     />
-                    {slugStatus === 'checking' && (
-                      <Loader2 className="w-4 h-4 text-gray-400 animate-spin mr-3 flex-shrink-0" />
-                    )}
+                    {slugStatus === 'checking' && <Loader2 className="w-4 h-4 text-gray-400 animate-spin mr-3" />}
                   </div>
-                  <div className="mt-1.5 flex items-center justify-between">
-                    <p className={`text-xs ${slugStatusColor()}`}>
-                      {slugStatusText() || t('step0.slugHint')}
-                    </p>
-                  </div>
-                  {slug && SLUG_RE.test(slug) && (
-                    <p className="mt-2 text-xs text-gray-400">
-                      {t('step0.slugPreview')}{' '}
-                      <span className="font-medium text-gray-600">
-                        {slug}.{rootDomain}
-                      </span>
-                    </p>
-                  )}
+                  <p className={`mt-1.5 text-xs ${slugStatus === 'available' ? 'text-green-600' : ['taken', 'invalid'].includes(slugStatus) ? 'text-red-500' : 'text-gray-400'}`}>
+                    {slugStatusText || t('step0.slugHint')}
+                  </p>
                 </div>
               )}
 
-              <Button
-                className="w-full mt-6"
-                onClick={() => setStep(1)}
-                disabled={!canContinueStep0}
-              >
-                {t('step0.continue')}
-              </Button>
+              <Button className="w-full mt-6" onClick={() => setStep(1)} disabled={!canContinue}>{t('step0.continue')}</Button>
             </div>
           )}
 
@@ -265,24 +195,17 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-medium text-gray-500">{t('step1.serviceNameLabel')}</label>
-                  <input type="text" value={service.name} onChange={(e) => setService((s) => ({ ...s, name: e.target.value }))}
-                    placeholder={t('step1.serviceNamePlaceholder')}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input value={service.name} onChange={(e) => setService((current) => ({ ...current, name: e.target.value }))} placeholder={t('step1.serviceNamePlaceholder')} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
-                <div className={showDuration ? 'grid grid-cols-2 gap-3' : ''}>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium text-gray-500">{t('step1.priceLabel')}</label>
-                    <input type="number" min={0} value={service.price} onChange={(e) => setService((s) => ({ ...s, price: e.target.value }))}
-                      placeholder="0"
-                      className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input type="number" min={0} value={service.price} onChange={(e) => setService((current) => ({ ...current, price: e.target.value }))} placeholder="0" className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
-                  {showDuration && (
-                    <div>
-                      <label className="text-xs font-medium text-gray-500">{t('step1.durationLabel')}</label>
-                      <input type="number" min={5} value={service.duration_min} onChange={(e) => setService((s) => ({ ...s, duration_min: e.target.value }))}
-                        className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                  )}
+                  <div>
+                    <label className="text-xs font-medium text-gray-500">{t('step1.durationLabel')}</label>
+                    <input type="number" min={5} step={5} value={service.duration_min} onChange={(e) => setService((current) => ({ ...current, duration_min: e.target.value }))} className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  </div>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -295,34 +218,22 @@ export function OnboardingWizard({ initialSlug, initialName, isSaas, rootDomain 
 
           {step === 2 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">WhatsApp</h2>
-              <p className="text-sm text-gray-500 mb-6">
-                A Agelya usará o WhatsApp como canal de comunicação com os clientes. A integração será feita pela Evolution API.
-              </p>
-
-              <div className="p-4 rounded-xl bg-green-50 border border-green-100">
-                <div className="flex items-start gap-3">
-                  <div className="text-2xl">💬</div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-gray-900">WhatsApp via Evolution API</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      Confirmações, lembretes e mensagens de atendimento poderão ser enviados pelo WhatsApp.
-                    </div>
-                    <div className="text-xs text-gray-500 mt-2">
-                      Você poderá conectar sua instância depois em Configurações → WhatsApp.
-                    </div>
-                  </div>
-                  <span className="ml-auto text-xs text-gray-500 whitespace-nowrap">Configurar depois</span>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('step2.heading')}</h2>
+              <p className="text-sm text-gray-500 mb-6">{t('step2.subheading')}</p>
+              <div className="p-4 rounded-xl bg-green-50 border border-green-100 flex items-start gap-3">
+                <div className="text-2xl">💬</div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-gray-900">{t('step2.messengerChannel')}</div>
+                  <div className="text-xs text-gray-600 mt-1">{t('step2.messengerChannelSub')}</div>
                 </div>
+                <span className="text-xs text-gray-500 whitespace-nowrap">{t('step2.messengerChannelStatus')}</span>
               </div>
 
-              {error && (
-                <div className="mt-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>
-              )}
+              {error && <div className="mt-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>}
               <div className="flex gap-3 mt-6">
-                <Button variant="outline" onClick={() => setStep(1)} disabled={saving}>Voltar</Button>
+                <Button variant="outline" onClick={() => setStep(1)} disabled={saving}>{t('step2.back')}</Button>
                 <Button className="flex-1" onClick={finish} disabled={saving}>
-                  {saving ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Finalizando…</span> : 'Ir para o painel →'}
+                  {saving ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{t('step2.settingUp')}</span> : t('step2.submit')}
                 </Button>
               </div>
             </div>
