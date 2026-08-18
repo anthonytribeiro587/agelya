@@ -1,36 +1,32 @@
 import { createClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { getTranslations } from 'next-intl/server'
 import { ClientDetailView } from './client-detail-view'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { getTelegramBotInfo } from '@/lib/telegram'
 
 export default async function ClientDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient()
   const t = await getTranslations('clientDetail')
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
   const { data: business } = await supabase
-    .from('businesses').select('id, currency, timezone, telegram_bot_token').eq('owner_id', user!.id).maybeSingle()
-  if (!business) return null
+    .from('businesses')
+    .select('id, currency, timezone')
+    .eq('owner_id', user.id)
+    .maybeSingle()
+  if (!business) redirect('/onboarding')
 
   const { data: client } = await supabase
     .from('clients')
-    .select('id, name, phone, email, birthday, notes, tags, total_visits, total_spent, last_visit_at, created_at, telegram_id, viber_user_id, whatsapp_number')
+    .select('id, name, phone, email, birthday, notes, tags, total_visits, total_spent, last_visit_at, created_at, whatsapp_number')
     .eq('id', params.id)
     .eq('business_id', business.id)
     .maybeSingle()
 
   if (!client) notFound()
-
-  const telegramInfo = business.telegram_bot_token
-    ? await getTelegramBotInfo(business.telegram_bot_token)
-    : { ok: false as const }
-  const telegramBotUsername = telegramInfo.ok
-    ? (telegramInfo as { ok: true; result?: { username: string } }).result?.username ?? null
-    : null
 
   const { data: appointments } = await supabase
     .from('appointments')
@@ -55,8 +51,6 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
         appointments={appointments ?? []}
         currency={business.currency}
         timezone={business.timezone}
-        businessId={business.id}
-        telegramBotUsername={telegramBotUsername}
       />
     </>
   )

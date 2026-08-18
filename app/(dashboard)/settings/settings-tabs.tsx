@@ -1,1039 +1,648 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { Check, Eye, EyeOff, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Check, Loader2, CheckCircle2, AlertCircle, Users, Eye, EyeOff } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { MODULES, ModuleKey } from '@/lib/modules'
 import { EvolutionSettings } from './evolution-settings'
 
-const clean = (s: string, max = 500) => s?.trim().slice(0, max) ?? ''
-
 interface Business {
-  id: string; name: string; slug: string; type: string | null; phone: string | null
-  email: string | null; address: string | null; timezone: string; currency: string; plan: string
-  plan_expires_at: string | null
-  telegram_bot_token: string | null; viber_bot_token: string | null
-  owner_whatsapp: string | null
-  email_provider: string | null
-  smtp_host: string | null; smtp_port: number | null; smtp_user: string | null
-  smtp_pass: string | null; smtp_from: string | null
-  resend_api_key: string | null
-  meta_whatsapp_phone_number_id: string | null
-  meta_whatsapp_access_token: string | null
-  wa_template_confirmation: string | null
-  wa_template_reminder: string | null
-  wa_template_thankyou: string | null
-  wa_template_reactivation: string | null
-  wa_template_birthday: string | null
-  wa_template_language: string | null
+  id: string
+  name: string
+  slug: string
+  type: string | null
+  phone: string | null
+  email: string | null
+  address: string | null
+  timezone: string
+  currency: string
   brand_color: string | null
   notification_language: string | null
-  logo_url: string | null
-  enabled_modules: string[] | null
 }
-interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; is_active: boolean; capacity: number }
-interface Employee { id: string; name: string; role: string; email: string | null; phone: string | null; is_active: boolean }
-interface DayHours { day_of_week: number; is_open: boolean; open_time: string; close_time: string }
 
-const DEFAULT_HOURS: DayHours[] = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({
-  day_of_week: dow,
-  is_open: dow >= 1 && dow <= 5,
+interface Service {
+  id: string
+  name: string
+  description: string | null
+  price: number
+  duration_min: number
+  category: string | null
+  is_active: boolean
+  capacity: number
+}
+
+interface Employee {
+  id: string
+  name: string
+  role: string
+  email: string | null
+  phone: string | null
+  is_active: boolean
+}
+
+interface DayHours {
+  day_of_week: number
+  is_open: boolean
+  open_time: string
+  close_time: string
+}
+
+interface Props {
+  business: Business
+  services: Service[]
+  employees: Employee[]
+  workingHours: DayHours[]
+  userEmail: string
+}
+
+type Tab = 'general' | 'services' | 'employees' | 'notifications' | 'account'
+
+const DEFAULT_HOURS: DayHours[] = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+  day_of_week: day,
+  is_open: day >= 1 && day <= 5,
   open_time: '09:00',
   close_time: '19:00',
 }))
 
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const h = Math.floor(i / 2)
-  const m = i % 2 === 0 ? '00' : '30'
-  return `${String(h).padStart(2, '0')}:${m}`
+  const hour = Math.floor(i / 2)
+  const minute = i % 2 === 0 ? '00' : '30'
+  return `${String(hour).padStart(2, '0')}:${minute}`
 })
 
-interface Props { business: Business & { telegram_chat_id?: string | null; viber_chat_id?: string | null }; services: Service[]; employees: Employee[]; workingHours: DayHours[]; userEmail: string }
-type Tab = 'general' | 'services' | 'employees' | 'notifications' | 'billing' | 'account' | 'modules'
+const CURRENCIES = [
+  { value: 'BRL', label: '🇧🇷 BRL — R$' },
+  { value: 'AUD', label: '🇦🇺 AUD — A$' },
+  { value: 'USD', label: '🇺🇸 USD — US$' },
+  { value: 'EUR', label: '🇪🇺 EUR — €' },
+  { value: 'GBP', label: '🇬🇧 GBP — £' },
+]
 
-export function SettingsTabs({ business: initial, services: initServices, employees: initEmployees, workingHours: initHours, userEmail }: Props) {
+const TIMEZONES = [
+  { value: 'America/Sao_Paulo', label: '🇧🇷 São Paulo (UTC−3)' },
+  { value: 'Australia/Brisbane', label: '🇦🇺 Brisbane / Gold Coast (UTC+10)' },
+  { value: 'Australia/Sydney', label: '🇦🇺 Sydney' },
+  { value: 'Australia/Melbourne', label: '🇦🇺 Melbourne' },
+  { value: 'Europe/Lisbon', label: '🇵🇹 Lisboa' },
+  { value: 'Europe/London', label: '🇬🇧 London' },
+  { value: 'America/New_York', label: '🇺🇸 New York' },
+  { value: 'UTC', label: 'UTC' },
+]
+
+const clean = (value: string | null | undefined, max = 500) => value?.trim().slice(0, max) ?? ''
+
+export function SettingsTabs({
+  business: initialBusiness,
+  services: initialServices,
+  employees: initialEmployees,
+  workingHours: initialHours,
+  userEmail,
+}: Props) {
   const supabase = createClient()
   const router = useRouter()
-  const t = useTranslations('settings')
   const searchParams = useSearchParams()
-  const initialTab = (['general', 'services', 'employees', 'notifications', 'billing', 'modules'].includes(searchParams.get('tab') ?? '')
-    ? searchParams.get('tab')
-    : 'general') as Tab
+  const t = useTranslations('settings')
+
+  const requestedTab = searchParams.get('tab')
+  const initialTab: Tab = ['general', 'services', 'employees', 'notifications', 'account'].includes(requestedTab ?? '')
+    ? requestedTab as Tab
+    : 'general'
+
   const [tab, setTab] = useState<Tab>(initialTab)
-  const [webhookStatus, setWebhookStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
-  const [webhookMsg, setWebhookMsg] = useState('')
-  const [viberWebhookStatus, setViberWebhookStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
-  const [viberWebhookMsg, setViberWebhookMsg] = useState('')
-  const [waStatus, setWaStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
-  const [waMsg, setWaMsg] = useState('')
-  const [biz, setBiz] = useState(initial)
+  const [business, setBusiness] = useState(initialBusiness)
+  const [services, setServices] = useState(initialServices)
+  const [employees, setEmployees] = useState(initialEmployees)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [slugError, setSlugError] = useState('')
-  const [services, setServices] = useState(initServices)
-  const [svcForm, setSvcForm] = useState<Partial<Service>>({})
-  const [confirmDeleteSvcId, setConfirmDeleteSvcId] = useState<string | null>(null)
-  const [confirmDeleteEmpId, setConfirmDeleteEmpId] = useState<string | null>(null)
-  const [editingSvc, setEditingSvc] = useState<string | null>(null)
-  const [employees, setEmployees] = useState(initEmployees)
-  const [empForm, setEmpForm] = useState<Partial<Employee>>({})
-  const [editingEmp, setEditingEmp] = useState<string | null>(null)
-
-  // Modules tab state
-  const DEFAULT_MODULES = ['bookings', 'crm', 'pos', 'inventory', 'notifications']
-  const [enabledModules, setEnabledModules] = useState<string[]>(
-    initial.enabled_modules ?? DEFAULT_MODULES
-  )
-  const [modulesSaving, setModulesSaving] = useState(false)
-  const [confirmModule, setConfirmModule] = useState<ModuleKey | null>(null)
-  const [modulesSaved, setModulesSaved] = useState(false)
-
-  // Logo state
-  const [logoUrl, setLogoUrl] = useState<string | null>(initial.logo_url ?? null)
-  const [logoUploading, setLogoUploading] = useState(false)
-  const [logoError, setLogoError] = useState('')
-
-  async function uploadLogo(file: File) {
-    setLogoError('')
-    setLogoUploading(true)
-    try {
-      const form = new FormData()
-      form.append('logo', file)
-      const res = await fetch('/api/business/logo', { method: 'POST', body: form })
-      let data: { logo_url?: string; error?: string } = {}
-      try { data = await res.json() } catch { /* non-JSON response */ }
-      if (!res.ok) {
-        setLogoError(data.error ?? `Upload failed (HTTP ${res.status})`)
-        return
-      }
-      setLogoUrl(data.logo_url ?? null)
-    } catch (e) {
-      setLogoError(t('general.logoErrorNetwork', { message: e instanceof Error ? e.message : 'please try again' }))
-    } finally {
-      setLogoUploading(false)
-    }
-  }
-
-  async function removeLogo() {
-    setLogoError('')
-    setLogoUploading(true)
-    try {
-      await fetch('/api/business/logo', { method: 'DELETE' })
-      setLogoUrl(null)
-    } catch {
-      setLogoError(t('general.logoErrorRemove'))
-    } finally {
-      setLogoUploading(false)
-    }
-  }
-
-  const [hours, setHours] = useState<DayHours[]>(() => {
-    return DEFAULT_HOURS.map((def) => {
-      const fromDb = initHours.find((h) => h.day_of_week === def.day_of_week)
-      return fromDb ?? def
-    })
-  })
-  const [savingHours, setSavingHours] = useState(false)
   const [origin, setOrigin] = useState('')
-  useEffect(() => { setOrigin(window.location.origin) }, [])
 
-  const bookingUrl = useMemo(() => `${origin}/book/${biz.slug}`, [biz.slug, origin])
+  const [serviceForm, setServiceForm] = useState<Partial<Service>>({ duration_min: 60, capacity: 1 })
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null)
+  const [deleteServiceId, setDeleteServiceId] = useState<string | null>(null)
 
-  const [savedHours, setSavedHours] = useState(false)
+  const [employeeForm, setEmployeeForm] = useState<Partial<Employee>>({ role: 'professional' })
+  const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null)
+  const [deleteEmployeeId, setDeleteEmployeeId] = useState<string | null>(null)
 
-  async function saveWorkingHours() {
-    setSavingHours(true)
-    const rows = hours.map((h) => ({
-      business_id: biz.id,
-      day_of_week: h.day_of_week,
-      is_open: h.is_open,
-      open_time: h.open_time,
-      close_time: h.close_time,
-    }))
-    await supabase.from('business_hours').upsert(rows, { onConflict: 'business_id,day_of_week' })
-    setSavingHours(false)
-    setSavedHours(true)
-    setTimeout(() => setSavedHours(false), 2000)
-  }
-
-  function updateDay(dow: number, patch: Partial<DayHours>) {
-    setHours((prev) => prev.map((h) => h.day_of_week === dow ? { ...h, ...patch } : h))
-  }
-
-  const [pwForm, setPwForm] = useState({ newPassword: '', confirm: '' })
-  const [showPw, setShowPw] = useState(false)
-  const [pwStatus, setPwStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
-  const [pwMsg, setPwMsg] = useState('')
-
-  async function changePassword() {
-    if (pwForm.newPassword.length < 8) { setPwStatus('error'); setPwMsg(t('account.pwMinLength')); return }
-    if (pwForm.newPassword !== pwForm.confirm) { setPwStatus('error'); setPwMsg(t('account.pwNoMatch')); return }
-    setPwStatus('loading'); setPwMsg('')
-    const { error } = await supabase.auth.updateUser({ password: pwForm.newPassword })
-    if (error) { setPwStatus('error'); setPwMsg(error.message) }
-    else { setPwStatus('ok'); setPwMsg(t('account.pwSuccess')); setPwForm({ newPassword: '', confirm: '' }) }
-  }
+  const [hours, setHours] = useState<DayHours[]>(() => DEFAULT_HOURS.map((fallback) => (
+    initialHours.find((item) => item.day_of_week === fallback.day_of_week) ?? fallback
+  )))
+  const [savingHours, setSavingHours] = useState(false)
+  const [hoursSaved, setHoursSaved] = useState(false)
 
   const [newEmail, setNewEmail] = useState('')
   const [emailStatus, setEmailStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
-  const [emailMsg, setEmailMsg] = useState('')
+  const [emailMessage, setEmailMessage] = useState('')
+  const [passwordForm, setPasswordForm] = useState({ password: '', confirm: '' })
+  const [showPassword, setShowPassword] = useState(false)
+  const [passwordStatus, setPasswordStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  const [passwordMessage, setPasswordMessage] = useState('')
 
-  async function changeEmail() {
-    if (!newEmail.includes('@')) { setEmailStatus('error'); setEmailMsg(t('account.emailInvalid')); return }
-    setEmailStatus('loading'); setEmailMsg('')
-    const { error } = await supabase.auth.updateUser({ email: newEmail })
-    if (error) { setEmailStatus('error'); setEmailMsg(error.message) }
-    else {
-      setEmailStatus('ok')
-      setEmailMsg(t('account.emailConfirmSent', { email: newEmail }))
-      setNewEmail('')
-    }
+  useEffect(() => setOrigin(window.location.origin), [])
+
+  const bookingUrl = useMemo(
+    () => origin ? `${origin}/book/${business.slug}` : `/book/${business.slug}`,
+    [origin, business.slug]
+  )
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'general', label: t('tabs.general') },
+    { key: 'services', label: t('tabs.services') },
+    { key: 'employees', label: t('tabs.employees') },
+    { key: 'notifications', label: t('tabs.notifications') },
+    { key: 'account', label: t('tabs.account') },
+  ]
+
+  function normalizeSlug(value: string) {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60)
   }
 
   async function saveBusiness() {
-    if (slugError) return
     setSaving(true)
-    const cleanSlug = biz.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || initial.slug
-    const bizName = clean(biz.name || '', 100)
-    const bizAddress = biz.address ? clean(biz.address, 200) || null : null
-    setBiz((b) => ({ ...b, slug: cleanSlug }))
-    await supabase.from('businesses').update({
-      name: bizName, slug: cleanSlug, type: biz.type, phone: biz.phone, email: biz.email, address: bizAddress,
-      timezone: biz.timezone, currency: biz.currency,
-      telegram_bot_token: biz.telegram_bot_token, viber_bot_token: biz.viber_bot_token,
-      owner_whatsapp: biz.owner_whatsapp,
-      email_provider: biz.email_provider,
-      smtp_host: biz.smtp_host, smtp_port: biz.smtp_port, smtp_user: biz.smtp_user,
-      smtp_pass: biz.smtp_pass, smtp_from: biz.smtp_from,
-      resend_api_key: biz.resend_api_key,
-      meta_whatsapp_phone_number_id: biz.meta_whatsapp_phone_number_id,
-      meta_whatsapp_access_token: biz.meta_whatsapp_access_token,
-      wa_template_confirmation: biz.wa_template_confirmation,
-      wa_template_reminder: biz.wa_template_reminder,
-      wa_template_thankyou: biz.wa_template_thankyou,
-      wa_template_reactivation: biz.wa_template_reactivation,
-      wa_template_birthday: biz.wa_template_birthday,
-      wa_template_language: biz.wa_template_language ?? 'en',
-      brand_color: biz.brand_color || '#2D2926',
-      notification_language: biz.notification_language ?? 'en',
-    }).eq('id', biz.id)
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
-    router.refresh()
-  }
-
-  async function saveService() {
-    if (!svcForm.name || svcForm.price == null) return
-    const svcName = clean(svcForm.name, 100)
-    if (!svcName) return
-    const svcDescription = svcForm.description ? clean(svcForm.description, 500) || null : null
-    const svcCategory = svcForm.category ? clean(svcForm.category, 100) || null : null
-    const sanitizedForm = { ...svcForm, name: svcName, description: svcDescription, category: svcCategory }
-    if (editingSvc) {
-      await supabase.from('services').update(sanitizedForm).eq('id', editingSvc)
-      setServices((prev) => prev.map((s) => s.id === editingSvc ? { ...s, ...sanitizedForm } as Service : s))
-    } else {
-      const { data } = await supabase.from('services').insert({
-        business_id: biz.id, name: svcName, description: svcDescription,
-        price: svcForm.price!, duration_min: svcForm.duration_min ?? 60, category: svcCategory,
-        capacity: svcForm.capacity ?? 1,
-      }).select().single()
-      if (data) setServices((prev) => [...prev, data as Service])
+    const next = {
+      name: clean(business.name, 100),
+      slug: normalizeSlug(business.slug),
+      type: business.type,
+      phone: clean(business.phone, 30) || null,
+      email: clean(business.email, 160) || null,
+      address: clean(business.address, 240) || null,
+      timezone: business.timezone || 'America/Sao_Paulo',
+      currency: business.currency || 'BRL',
+      brand_color: business.brand_color || '#16a34a',
+      notification_language: business.notification_language || 'pt',
     }
-    setSvcForm({}); setEditingSvc(null)
-    router.refresh()
-  }
 
-  async function deleteService(id: string) {
-    await supabase.from('services').delete().eq('id', id)
-    setServices((prev) => prev.filter((s) => s.id !== id))
-    setConfirmDeleteSvcId(null)
-    router.refresh()
-  }
-
-  async function saveEmployee() {
-    if (!empForm.name) return
-    const empName = clean(empForm.name, 100)
-    if (!empName) return
-    const sanitizedEmp = { ...empForm, name: empName }
-    if (editingEmp) {
-      await supabase.from('employees').update(sanitizedEmp).eq('id', editingEmp)
-      setEmployees((prev) => prev.map((e) => e.id === editingEmp ? { ...e, ...sanitizedEmp } as Employee : e))
-    } else {
-      const { data } = await supabase.from('employees').insert({
-        business_id: biz.id, name: empName, role: empForm.role ?? 'employee',
-        email: empForm.email ?? null, phone: empForm.phone ?? null,
-      }).select().single()
-      if (data) setEmployees((prev) => [...prev, data as Employee])
-    }
-    setEmpForm({}); setEditingEmp(null)
-    router.refresh()
-  }
-
-  async function connectWhatsApp() {
-    setWaStatus('loading')
-    setWaMsg('')
-    const { error } = await supabase.from('businesses').update({
-      meta_whatsapp_phone_number_id: biz.meta_whatsapp_phone_number_id,
-      meta_whatsapp_access_token: biz.meta_whatsapp_access_token,
-    }).eq('id', biz.id)
-    if (error) {
-      setWaStatus('error')
-      setWaMsg(error.message)
-    } else {
-      setWaStatus('ok')
-      setWaMsg('WhatsApp credentials saved successfully.')
+    const { error } = await supabase.from('businesses').update(next).eq('id', business.id)
+    setSaving(false)
+    if (!error) {
+      setBusiness((current) => ({ ...current, ...next }))
+      setSaved(true)
+      window.setTimeout(() => setSaved(false), 1800)
       router.refresh()
     }
   }
 
-  async function connectViber() {
-    setViberWebhookStatus('loading')
-    setViberWebhookMsg('')
-    await supabase.from('businesses').update({ viber_bot_token: biz.viber_bot_token }).eq('id', biz.id)
-    const res = await fetch('/api/viber/set-webhook', { method: 'POST' })
-    const json = await res.json()
-    if (json.ok) {
-      setViberWebhookStatus('ok')
-      setViberWebhookMsg(`Connected! Bot: ${json.botName}. Now open your Viber bot and start a conversation.`)
-    } else {
-      setViberWebhookStatus('error')
-      setViberWebhookMsg(json.error ?? 'Unknown error')
+  function updateDay(day: number, patch: Partial<DayHours>) {
+    setHours((current) => current.map((item) => item.day_of_week === day ? { ...item, ...patch } : item))
+  }
+
+  async function saveWorkingHours() {
+    setSavingHours(true)
+    const rows = hours.map((item) => ({ ...item, business_id: business.id }))
+    const { error } = await supabase.from('business_hours').upsert(rows, { onConflict: 'business_id,day_of_week' })
+    setSavingHours(false)
+    if (!error) {
+      setHoursSaved(true)
+      window.setTimeout(() => setHoursSaved(false), 1800)
     }
   }
 
-  async function connectTelegram() {
-    setWebhookStatus('loading')
-    setWebhookMsg('')
-    await supabase.from('businesses').update({ telegram_bot_token: biz.telegram_bot_token }).eq('id', biz.id)
-    const res = await fetch('/api/telegram/set-webhook', { method: 'POST' })
-    const json = await res.json()
-    if (json.ok) {
-      setWebhookStatus('ok')
-      setWebhookMsg(`Connected! Bot: @${json.botUsername}. Now open your bot in Telegram and send /start.`)
-    } else {
-      setWebhookStatus('error')
-      setWebhookMsg(json.error ?? 'Unknown error')
-    }
+  function resetServiceForm() {
+    setServiceForm({ duration_min: 60, capacity: 1 })
+    setEditingServiceId(null)
   }
 
-  async function deleteEmployee(id: string) {
-    await supabase.from('employees').delete().eq('id', id)
-    setEmployees((prev) => prev.filter((e) => e.id !== id))
-    setConfirmDeleteEmpId(null)
+  async function saveService() {
+    const name = clean(serviceForm.name, 100)
+    if (!name || serviceForm.price == null) return
+
+    const payload = {
+      name,
+      description: clean(serviceForm.description, 500) || null,
+      price: Number(serviceForm.price),
+      duration_min: Math.max(5, Number(serviceForm.duration_min) || 60),
+      category: clean(serviceForm.category, 100) || null,
+      capacity: Math.max(1, Number(serviceForm.capacity) || 1),
+      is_active: serviceForm.is_active ?? true,
+    }
+
+    if (editingServiceId) {
+      const { data } = await supabase.from('services').update(payload).eq('id', editingServiceId).select().single()
+      if (data) setServices((current) => current.map((item) => item.id === editingServiceId ? data as Service : item))
+    } else {
+      const { data } = await supabase.from('services').insert({ business_id: business.id, ...payload }).select().single()
+      if (data) setServices((current) => [...current, data as Service])
+    }
+
+    resetServiceForm()
     router.refresh()
   }
 
-  const bookingsOn = enabledModules.includes('bookings')
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'general', label: t('tabs.general') },
-    ...(bookingsOn ? [{ key: 'services' as Tab, label: t('tabs.services') }] : []),
-    { key: 'employees', label: t('tabs.employees') },
-    { key: 'notifications', label: t('tabs.notifications') },
-    { key: 'billing', label: t('tabs.billing') },
-    { key: 'modules', label: t('tabs.modules') },
-    { key: 'account', label: t('tabs.account') },
-  ]
+  function editService(service: Service) {
+    setEditingServiceId(service.id)
+    setServiceForm(service)
+  }
 
-  const generalFields: { key: keyof Business; label: string; type: string }[] = [
-    { key: 'name', label: t('general.fields.name'), type: 'text' },
-    { key: 'phone', label: t('general.fields.phone'), type: 'tel' },
-    { key: 'email', label: t('general.fields.email'), type: 'email' },
-    { key: 'address', label: t('general.fields.address'), type: 'text' },
-  ]
+  async function deleteService(id: string) {
+    const { error } = await supabase.from('services').delete().eq('id', id)
+    if (!error) setServices((current) => current.filter((item) => item.id !== id))
+    setDeleteServiceId(null)
+    router.refresh()
+  }
 
-  const CURRENCIES: { value: string; label: string }[] = [
-    { value: 'USD', label: '🇺🇸 USD — US Dollar' },
-    { value: 'EUR', label: '🇪🇺 EUR — Euro' },
-    { value: 'GBP', label: '🇬🇧 GBP — British Pound' },
-    { value: 'AED', label: '🇦🇪 AED — UAE Dirham' },
-    { value: 'SAR', label: '🇸🇦 SAR — Saudi Riyal' },
-    { value: 'TRY', label: '🇹🇷 TRY — Turkish Lira' },
-    { value: 'UAH', label: '🇺🇦 UAH — Ukrainian Hryvnia' },
-    { value: 'RUB', label: '🇷🇺 RUB — Russian Ruble' },
-    { value: 'KZT', label: '🇰🇿 KZT — Kazakhstani Tenge' },
-    { value: 'GEL', label: '🇬🇪 GEL — Georgian Lari' },
-    { value: 'BRL', label: '🇧🇷 BRL — Brazilian Real' },
-    { value: 'MXN', label: '🇲🇽 MXN — Mexican Peso' },
-    { value: 'INR', label: '🇮🇳 INR — Indian Rupee' },
-    { value: 'THB', label: '🇹🇭 THB — Thai Baht' },
-    { value: 'JPY', label: '🇯🇵 JPY — Japanese Yen' },
-    { value: 'CNY', label: '🇨🇳 CNY — Chinese Yuan' },
-    { value: 'PLN', label: '🇵🇱 PLN — Polish Złoty' },
-    { value: 'RON', label: '🇷🇴 RON — Romanian Leu' },
-    { value: 'ARS', label: '🇦🇷 ARS — Argentine Peso' },
-    { value: 'other', label: '✏️ Other (enter manually)' },
-  ]
+  function resetEmployeeForm() {
+    setEmployeeForm({ role: 'professional' })
+    setEditingEmployeeId(null)
+  }
 
-  const isKnownCurrency = CURRENCIES.some((c) => c.value !== 'other' && c.value === biz.currency)
-  const currencySelectValue = isKnownCurrency ? biz.currency : (biz.currency ? 'other' : 'USD')
+  async function saveEmployee() {
+    const name = clean(employeeForm.name, 100)
+    if (!name) return
 
-  const TIMEZONES: { value: string; label: string }[] = [
-    { value: 'UTC',                    label: '(UTC+0) UTC' },
-    { value: 'Europe/London',          label: '(UTC+0) London' },
-    { value: 'Europe/Paris',           label: '(UTC+1) Paris' },
-    { value: 'Europe/Berlin',          label: '(UTC+1) Berlin' },
-    { value: 'Europe/Rome',            label: '(UTC+1) Rome' },
-    { value: 'Europe/Madrid',          label: '(UTC+1) Madrid' },
-    { value: 'Europe/Amsterdam',       label: '(UTC+1) Amsterdam' },
-    { value: 'Europe/Brussels',        label: '(UTC+1) Brussels' },
-    { value: 'Europe/Vienna',          label: '(UTC+1) Vienna' },
-    { value: 'Europe/Warsaw',          label: '(UTC+1) Warsaw' },
-    { value: 'Europe/Prague',          label: '(UTC+1) Prague' },
-    { value: 'Europe/Budapest',        label: '(UTC+1) Budapest' },
-    { value: 'Europe/Bucharest',       label: '(UTC+2) Bucharest' },
-    { value: 'Europe/Sofia',           label: '(UTC+2) Sofia' },
-    { value: 'Europe/Athens',          label: '(UTC+2) Athens' },
-    { value: 'Europe/Kiev',            label: '(UTC+2) Kyiv' },
-    { value: 'Europe/Minsk',           label: '(UTC+3) Minsk' },
-    { value: 'Europe/Moscow',          label: '(UTC+3) Moscow' },
-    { value: 'Europe/Istanbul',        label: '(UTC+3) Istanbul' },
-    { value: 'Asia/Dubai',             label: '(UTC+4) Dubai' },
-    { value: 'Asia/Karachi',           label: '(UTC+5) Karachi' },
-    { value: 'Asia/Kolkata',           label: '(UTC+5:30) Kolkata' },
-    { value: 'Asia/Dhaka',             label: '(UTC+6) Dhaka' },
-    { value: 'Asia/Bangkok',           label: '(UTC+7) Bangkok' },
-    { value: 'Asia/Singapore',         label: '(UTC+8) Singapore' },
-    { value: 'Asia/Shanghai',          label: '(UTC+8) Shanghai' },
-    { value: 'Asia/Tokyo',             label: '(UTC+9) Tokyo' },
-    { value: 'Asia/Seoul',             label: '(UTC+9) Seoul' },
-    { value: 'Australia/Sydney',       label: '(UTC+10) Sydney' },
-    { value: 'Australia/Melbourne',    label: '(UTC+10) Melbourne' },
-    { value: 'Pacific/Auckland',       label: '(UTC+12) Auckland' },
-    { value: 'America/New_York',       label: '(UTC-5) New York' },
-    { value: 'America/Toronto',        label: '(UTC-5) Toronto' },
-    { value: 'America/Chicago',        label: '(UTC-6) Chicago' },
-    { value: 'America/Mexico_City',    label: '(UTC-6) Mexico City' },
-    { value: 'America/Denver',         label: '(UTC-7) Denver' },
-    { value: 'America/Los_Angeles',    label: '(UTC-8) Los Angeles' },
-    { value: 'America/Vancouver',      label: '(UTC-8) Vancouver' },
-    { value: 'America/Anchorage',      label: '(UTC-9) Anchorage' },
-    { value: 'Pacific/Honolulu',       label: '(UTC-10) Honolulu' },
-    { value: 'America/Bogota',         label: '(UTC-5) Bogota' },
-    { value: 'America/Lima',           label: '(UTC-5) Lima' },
-    { value: 'America/Sao_Paulo',      label: '(UTC-3) São Paulo' },
-    { value: 'America/Buenos_Aires',   label: '(UTC-3) Buenos Aires' },
-  ]
+    const payload = {
+      name,
+      role: clean(employeeForm.role, 80) || 'professional',
+      email: clean(employeeForm.email, 160) || null,
+      phone: clean(employeeForm.phone, 30) || null,
+      is_active: employeeForm.is_active ?? true,
+    }
 
-  const triggers = [
-    t('notifications.triggers.confirmation'),
-    t('notifications.triggers.reminder24h'),
-    t('notifications.triggers.reminder1h'),
-    t('notifications.triggers.thankYou'),
-    t('notifications.triggers.reactivation'),
-    t('notifications.triggers.birthday'),
-    t('notifications.triggers.lowStock'),
-  ]
+    if (editingEmployeeId) {
+      const { data } = await supabase.from('employees').update(payload).eq('id', editingEmployeeId).select().single()
+      if (data) setEmployees((current) => current.map((item) => item.id === editingEmployeeId ? data as Employee : item))
+    } else {
+      const { data } = await supabase.from('employees').insert({ business_id: business.id, ...payload }).select().single()
+      if (data) setEmployees((current) => [...current, data as Employee])
+    }
+
+    resetEmployeeForm()
+    router.refresh()
+  }
+
+  function editEmployee(employee: Employee) {
+    setEditingEmployeeId(employee.id)
+    setEmployeeForm(employee)
+  }
+
+  async function deleteEmployee(id: string) {
+    const { error } = await supabase.from('employees').delete().eq('id', id)
+    if (!error) setEmployees((current) => current.filter((item) => item.id !== id))
+    setDeleteEmployeeId(null)
+    router.refresh()
+  }
+
+  async function changeEmail() {
+    if (!newEmail.includes('@')) {
+      setEmailStatus('error')
+      setEmailMessage(t('account.emailInvalid'))
+      return
+    }
+
+    setEmailStatus('loading')
+    setEmailMessage('')
+    const { error } = await supabase.auth.updateUser({ email: newEmail })
+    if (error) {
+      setEmailStatus('error')
+      setEmailMessage(error.message)
+      return
+    }
+
+    setEmailStatus('ok')
+    setEmailMessage(t('account.emailConfirmSent', { email: newEmail }))
+    setNewEmail('')
+  }
+
+  async function changePassword() {
+    if (passwordForm.password.length < 8) {
+      setPasswordStatus('error')
+      setPasswordMessage(t('account.pwMinLength'))
+      return
+    }
+    if (passwordForm.password !== passwordForm.confirm) {
+      setPasswordStatus('error')
+      setPasswordMessage(t('account.pwNoMatch'))
+      return
+    }
+
+    setPasswordStatus('loading')
+    setPasswordMessage('')
+    const { error } = await supabase.auth.updateUser({ password: passwordForm.password })
+    if (error) {
+      setPasswordStatus('error')
+      setPasswordMessage(error.message)
+      return
+    }
+
+    setPasswordStatus('ok')
+    setPasswordMessage(t('account.pwSuccess'))
+    setPasswordForm({ password: '', confirm: '' })
+  }
 
   return (
-    <div className="p-3 sm:p-6 max-w-3xl">
-      <div className="flex flex-nowrap overflow-x-auto sm:flex-wrap sm:overflow-x-visible gap-1 bg-gray-100 p-1 rounded-lg mb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {tabs.map((tb) => (
-          <button key={tb.key} onClick={() => setTab(tb.key)}
-            className={`shrink-0 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${tab === tb.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-            {tb.label}
+    <div className="p-3 sm:p-6 max-w-4xl">
+      <div className="flex flex-nowrap overflow-x-auto sm:flex-wrap gap-1 bg-gray-100 p-1 rounded-lg mb-6 [&::-webkit-scrollbar]:hidden">
+        {tabs.map((item) => (
+          <button
+            key={item.key}
+            onClick={() => setTab(item.key)}
+            className={`shrink-0 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              tab === item.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {item.label}
           </button>
         ))}
       </div>
 
-      {/* General */}
       {tab === 'general' && (
         <div className="space-y-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">{t('general.heading')}</h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {generalFields.map(({ key, label, type }) => (
-              <div key={key}>
-                <label className="text-xs font-medium text-gray-500">{label}</label>
-                <input type={type} value={(biz[key] as string) ?? ''}
-                  onChange={(e) => setBiz((b) => ({ ...b, [key]: e.target.value }))}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            ))}
-            <div>
-              <label className="text-xs font-medium text-gray-500">{t('general.fields.timezone')}</label>
-              <select value={biz.timezone ?? 'UTC'} onChange={(e) => setBiz((b) => ({ ...b, timezone: e.target.value }))}
-                className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {TIMEZONES.map((tz) => (
-                  <option key={tz.value} value={tz.value}>{tz.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-500">{t('general.fields.currency')}</label>
-              <select value={currencySelectValue}
-                onChange={(e) => {
-                  if (e.target.value !== 'other') setBiz((b) => ({ ...b, currency: e.target.value }))
-                  else setBiz((b) => ({ ...b, currency: '' }))
-                }}
-                className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {CURRENCIES.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-              {currencySelectValue === 'other' && (
-                <input
-                  type="text"
-                  value={biz.currency ?? ''}
-                  onChange={(e) => setBiz((b) => ({ ...b, currency: e.target.value.toUpperCase() }))}
-                  placeholder="e.g. SGD"
-                  maxLength={10}
-                  className="w-full mt-2 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              )}
-            </div>
-          </div>
-          <div className="pt-2">
-            <label className="text-xs font-medium text-gray-500">{t('general.typeLabel')}</label>
-            <select value={biz.type ?? ''} onChange={(e) => setBiz((b) => ({ ...b, type: e.target.value }))}
-              className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">{t('general.typeDefault')}</option>
-              {(['salon', 'barbershop', 'auto_repair', 'cafe', 'dental', 'fitness', 'massage', 'other'] as const).map((tp) => (
-                <option key={tp} value={tp}>{t(`general.types.${tp}`)}</option>
-              ))}
-            </select>
-          </div>
-          <div className="pt-2">
-            <label className="text-xs font-medium text-gray-500">{t('general.fields.slug')}</label>
-            <input type="text" value={biz.slug ?? ''}
-              onChange={(e) => {
-                const converted = e.target.value.toLowerCase().replace(/ /g, '-')
-                setBiz((b) => ({ ...b, slug: converted }))
-                setSlugError(/[^a-z0-9-]/.test(converted) ? t('general.slugError') : '')
-              }}
-              className={`w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${slugError ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-blue-500'}`} />
-            {slugError
-              ? <p className="text-xs text-red-500 mt-1">{slugError}</p>
-              : <p className="text-xs text-gray-400 mt-1">{t('general.slugHint')}</p>}
-          </div>
-          <div className="pt-2">
-            <label className="text-xs font-medium text-gray-500">{t('general.brandColorLabel')}</label>
-            <div className="flex items-center gap-2 mt-1">
-              <input
-                type="color"
-                value={biz.brand_color || '#2D2926'}
-                onChange={(e) => setBiz((b) => ({ ...b, brand_color: e.target.value }))}
-                className="w-10 h-9 p-0.5 border border-gray-200 rounded-lg cursor-pointer"
-              />
-              <input
-                type="text"
-                value={biz.brand_color || '#2D2926'}
-                onChange={(e) => setBiz((b) => ({ ...b, brand_color: e.target.value }))}
-                maxLength={7}
-                className="w-32 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-              />
-            </div>
-            <p className="text-xs text-gray-400 mt-1">{t('general.brandColorHint')}</p>
-          </div>
-          {/* Business Logo */}
-          <div className="pt-2">
-            <label className="text-xs font-medium text-gray-500">{t('general.logoLabel')}</label>
-            <p className="text-xs text-gray-400 mt-0.5 mb-2">{t('general.logoHint')}</p>
-            {logoUrl ? (
-              <div className="flex items-center gap-3">
-                <div className="w-16 h-16 rounded-lg border border-gray-200 bg-white flex items-center justify-center overflow-hidden">
-                  <img src={logoUrl} alt="Business logo" style={{ width: 52, height: 52, objectFit: 'contain' }} />
+          <section className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+            <h2 className="font-semibold text-gray-900 mb-4">{t('general.heading')}</h2>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label={t('general.fields.name')}>
+                <input value={business.name} onChange={(e) => setBusiness((current) => ({ ...current, name: e.target.value }))} className="input" />
+              </Field>
+              <Field label={t('general.typeLabel')}>
+                <select value={business.type ?? ''} onChange={(e) => setBusiness((current) => ({ ...current, type: e.target.value || null }))} className="input">
+                  <option value="">{t('general.typeDefault')}</option>
+                  <option value="massage">{t('general.types.massage')}</option>
+                  <option value="salon">{t('general.types.salon')}</option>
+                  <option value="other">{t('general.types.other')}</option>
+                </select>
+              </Field>
+              <Field label={t('general.fields.phone')}>
+                <input type="tel" value={business.phone ?? ''} onChange={(e) => setBusiness((current) => ({ ...current, phone: e.target.value }))} className="input" />
+              </Field>
+              <Field label={t('general.fields.email')}>
+                <input type="email" value={business.email ?? ''} onChange={(e) => setBusiness((current) => ({ ...current, email: e.target.value }))} className="input" />
+              </Field>
+              <Field label={t('general.fields.address')} className="sm:col-span-2">
+                <input value={business.address ?? ''} onChange={(e) => setBusiness((current) => ({ ...current, address: e.target.value }))} className="input" />
+              </Field>
+              <Field label={t('general.fields.timezone')}>
+                <select value={business.timezone || 'America/Sao_Paulo'} onChange={(e) => setBusiness((current) => ({ ...current, timezone: e.target.value }))} className="input">
+                  {TIMEZONES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+              </Field>
+              <Field label={t('general.fields.currency')}>
+                <select value={business.currency || 'BRL'} onChange={(e) => setBusiness((current) => ({ ...current, currency: e.target.value }))} className="input">
+                  {CURRENCIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </select>
+              </Field>
+              <Field label={t('general.notificationLanguageLabel')}>
+                <select value={business.notification_language || 'pt'} onChange={(e) => setBusiness((current) => ({ ...current, notification_language: e.target.value }))} className="input">
+                  <option value="pt">Português</option>
+                  <option value="en">English</option>
+                  <option value="es">Español</option>
+                </select>
+                <p className="text-xs text-gray-400 mt-1">{t('general.notificationLanguageHint')}</p>
+              </Field>
+              <Field label={t('general.brandColorLabel')}>
+                <div className="flex gap-2 mt-1">
+                  <input type="color" value={business.brand_color || '#16a34a'} onChange={(e) => setBusiness((current) => ({ ...current, brand_color: e.target.value }))} className="h-10 w-12 rounded border border-gray-200 bg-white p-1" />
+                  <input value={business.brand_color || '#16a34a'} onChange={(e) => setBusiness((current) => ({ ...current, brand_color: e.target.value }))} className="input mt-0 flex-1" />
                 </div>
-                <button
-                  onClick={removeLogo}
-                  disabled={logoUploading}
-                  className="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
-                >
-                  {logoUploading ? t('general.logoRemoving') : t('general.logoRemove')}
-                </button>
+              </Field>
+            </div>
+
+            <div className="mt-5 pt-5 border-t border-gray-100">
+              <label className="text-xs font-medium text-gray-500">{t('general.bookingUrlLabel')}</label>
+              <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                <div className="flex-1 flex rounded-lg border border-gray-200 overflow-hidden">
+                  <span className="px-3 py-2 bg-gray-50 text-sm text-gray-400 border-r border-gray-200">/book/</span>
+                  <input value={business.slug} onChange={(e) => setBusiness((current) => ({ ...current, slug: normalizeSlug(e.target.value) }))} className="flex-1 min-w-0 px-3 py-2 text-sm outline-none" />
+                </div>
+                <a href={bookingUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 text-center">
+                  {t('general.logoUploadArea') === 'Upload area' ? 'Open' : 'Abrir'}
+                </a>
               </div>
-            ) : (
-              <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${logoUploading ? 'opacity-50 pointer-events-none' : 'border-gray-200 hover:border-blue-400 bg-gray-50 hover:bg-blue-50'}`}>
-                <span className="text-sm text-gray-500">{logoUploading ? t('general.logoUploading') : t('general.logoUpload')}</span>
-                <span className="text-xs text-gray-400 mt-1">{t('general.logoFormats')}</span>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                  className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f) }}
-                />
-              </label>
-            )}
-            {logoError && (
-              <p className="text-xs text-red-500 mt-1">{logoError}</p>
-            )}
-          </div>
-
-          <div className="pt-2">
-            <label className="text-xs font-medium text-gray-500">{t('general.notificationLanguageLabel')}</label>
-            <div className="flex gap-2 mt-1">
-              {(['en', 'es', 'pt'] as const).map((lang) => (
-                <button
-                  key={lang}
-                  type="button"
-                  onClick={() => setBiz((b) => ({ ...b, notification_language: lang }))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                    (biz.notification_language ?? 'en') === lang
-                      ? 'bg-green-600 text-white border-green-600'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-green-400'
-                  }`}
-                >
-                  {lang === 'en' ? 'English' : lang === 'es' ? 'Español' : 'Português'}
-                </button>
-              ))}
+              <p className="text-xs text-gray-400 mt-1">{t('general.slugHint')}</p>
             </div>
-            <p className="text-xs text-gray-400 mt-1">{t('general.notificationLanguageHint')}</p>
-          </div>
-          <div className="pt-2">
-            <div className="text-xs font-medium text-gray-500 mb-1">{t('general.bookingUrlLabel')}</div>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-blue-600 select-all">
-              {bookingUrl}
-            </div>
-          </div>
-          <div className="flex items-center gap-3 pt-2">
-            <Button onClick={saveBusiness} disabled={saving || !!slugError}>
-              {saving ? t('general.saving') : saved ? <><Check className="w-4 h-4 mr-1" />{t('general.saved')}</> : t('general.saveButton')}
-            </Button>
-            <Badge variant="outline">{t('general.planLabel')} {biz.plan}</Badge>
-          </div>
-        </div>
 
-        {/* Working Hours card */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-5">{t('workingHours.heading')}</h2>
-          <div className="space-y-2">
-            {[1, 2, 3, 4, 5, 6, 0].map((dow) => {
-              const day = hours.find((h) => h.day_of_week === dow)!
-              const dayName = (t.raw('workingHours.dayNames') as string[])[dow]
-              return (
-                <div key={dow} className="flex items-center gap-3">
-                  <label className="flex items-center cursor-pointer relative">
-                    <input
-                      type="checkbox"
-                      checked={day.is_open}
-                      onChange={(e) => updateDay(dow, { is_open: e.target.checked })}
-                      className="sr-only"
-                    />
-                    <div className={`w-9 h-5 rounded-full transition-colors relative ${day.is_open ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.is_open ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                    </div>
+            <div className="mt-5 flex items-center gap-3">
+              <Button onClick={saveBusiness} disabled={saving || !business.name || !business.slug}>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {saved ? t('general.saved') : t('general.saveButton')}
+              </Button>
+              {saved && <Check className="w-4 h-4 text-green-600" />}
+            </div>
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+            <h2 className="font-semibold text-gray-900 mb-4">{t('workingHours.heading')}</h2>
+            <div className="space-y-3">
+              {hours.map((item) => (
+                <div key={item.day_of_week} className="grid grid-cols-[58px_1fr] sm:grid-cols-[70px_90px_1fr] items-center gap-3">
+                  <span className="text-sm font-medium text-gray-700">{t.raw('workingHours.dayNames')[item.day_of_week]}</span>
+                  <label className="flex items-center gap-2 text-xs text-gray-500">
+                    <input type="checkbox" checked={item.is_open} onChange={(e) => updateDay(item.day_of_week, { is_open: e.target.checked })} />
+                    {item.is_open ? t('workingHours.from') : t('workingHours.closed')}
                   </label>
-                  <span className={`w-10 text-sm font-medium ${day.is_open ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {dayName}
-                  </span>
-                  {day.is_open ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <span className="text-xs text-gray-400">{t('workingHours.from')}</span>
-                      <select
-                        value={day.open_time}
-                        onChange={(e) => updateDay(dow, { open_time: e.target.value })}
-                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                  {item.is_open && (
+                    <div className="flex items-center gap-2 col-span-2 sm:col-span-1 ml-[70px] sm:ml-0">
+                      <select value={item.open_time.slice(0, 5)} onChange={(e) => updateDay(item.day_of_week, { open_time: e.target.value })} className="input mt-0 py-1.5">
+                        {TIME_OPTIONS.map((time) => <option key={time}>{time}</option>)}
                       </select>
                       <span className="text-xs text-gray-400">{t('workingHours.to')}</span>
-                      <select
-                        value={day.close_time}
-                        onChange={(e) => updateDay(dow, { close_time: e.target.value })}
-                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                      <select value={item.close_time.slice(0, 5)} onChange={(e) => updateDay(item.day_of_week, { close_time: e.target.value })} className="input mt-0 py-1.5">
+                        {TIME_OPTIONS.map((time) => <option key={time}>{time}</option>)}
                       </select>
                     </div>
-                  ) : (
-                    <span className="text-sm text-gray-300 flex-1">{t('workingHours.closed')}</span>
                   )}
                 </div>
-              )
-            })}
-          </div>
-          <div className="mt-5">
-            <Button onClick={saveWorkingHours} disabled={savingHours}>
-              {savingHours ? t('workingHours.saving') : savedHours ? <><Check className="w-4 h-4 mr-1" />{t('workingHours.saved')}</> : t('workingHours.saveButton')}
+              ))}
+            </div>
+            <Button variant="outline" className="mt-5" onClick={saveWorkingHours} disabled={savingHours}>
+              {savingHours && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {hoursSaved ? t('workingHours.saved') : t('workingHours.saveButton')}
             </Button>
-          </div>
-        </div>
+          </section>
         </div>
       )}
 
-      {/* Services */}
       {tab === 'services' && (
-        <div className="space-y-4">
+        <section className="space-y-4">
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {services.length === 0 ? (
-              <div className="py-10 text-center text-gray-500 text-sm">{t('services.empty')}</div>
+              <p className="p-6 text-sm text-gray-500">{t('services.empty')}</p>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 uppercase">
-                    <th className="text-left px-4 py-3 font-medium">{t('services.table.name')}</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">{t('services.table.category')}</th>
-                    <th className="text-right px-4 py-3 font-medium">{t('services.table.price')}</th>
-                    <th className="text-right px-4 py-3 font-medium">{t('services.table.duration')}</th>
-                    <th className="text-right px-4 py-3 font-medium hidden sm:table-cell">{t('services.table.capacity')}</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {services.map((s) => (
-                    <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50 last:border-0">
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
-                      <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">{s.category ?? '—'}</td>
-                      <td className="px-4 py-3 text-right">{biz.currency} {s.price}</td>
-                      <td className="px-4 py-3 text-right text-gray-500">{s.duration_min} min</td>
-                      <td className="px-4 py-3 text-right text-gray-500 hidden sm:table-cell">
-                        {(s.capacity ?? 1) > 1 ? (
-                          <span className="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5">
-                            <Users className="w-3 h-3" />{s.capacity}
-                          </span>
-                        ) : '1'}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {confirmDeleteSvcId === s.id ? (
-                          <div className="flex justify-end items-center gap-2">
-                            <span className="text-xs text-gray-500">{t('services.deleteConfirm')}</span>
-                            <button onClick={() => deleteService(s.id)} className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600">{t('services.deleteYes')}</button>
-                            <button onClick={() => setConfirmDeleteSvcId(null)} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50">{t('services.deleteNo')}</button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-1">
-                            <button onClick={() => { setSvcForm(s); setEditingSvc(s.id) }} className="p-1.5 hover:bg-gray-100 rounded"><Pencil className="w-3.5 h-3.5 text-gray-500" /></button>
-                            <button onClick={() => setConfirmDeleteSvcId(s.id)} className="p-1.5 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">{editingSvc ? t('services.editHeading') : t('services.addHeading')}</h3>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {([
-                { key: 'name', label: t('services.fields.name'), type: 'text' },
-                { key: 'category', label: t('services.fields.category'), type: 'text' },
-                { key: 'price', label: t('services.fields.price'), type: 'number' },
-                { key: 'duration_min', label: t('services.fields.duration'), type: 'number' },
-              ] as { key: keyof Service; label: string; type: string }[]).map(({ key, label, type }) => (
-                <div key={key}>
-                  <label className="text-xs font-medium text-gray-500">{label}</label>
-                  <input type={type} value={(svcForm[key] as string | number) ?? ''}
-                    onChange={(e) => setSvcForm((f) => ({ ...f, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              ))}
-              <div>
-                <label className="text-xs font-medium text-gray-500">{t('services.fields.capacity')}</label>
-                <input type="number" min={1} value={(svcForm.capacity as number) ?? 1}
-                  onChange={(e) => setSvcForm((f) => ({ ...f, capacity: Math.max(1, Number(e.target.value)) }))}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <p className="text-xs text-gray-400 mt-1">{t('services.capacityHint')}</p>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-4">
-              {editingSvc && <Button variant="outline" onClick={() => { setSvcForm({}); setEditingSvc(null) }}>{t('services.cancelButton')}</Button>}
-              <Button onClick={saveService} disabled={!svcForm.name}>
-                <Plus className="w-4 h-4 mr-1" />{editingSvc ? t('services.updateButton') : t('services.addButton')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Employees */}
-      {tab === 'employees' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            {employees.length === 0 ? (
-              <div className="py-10 text-center text-gray-500 text-sm">{t('employees.empty')}</div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 uppercase">
-                    <th className="text-left px-4 py-3 font-medium">{t('employees.table.name')}</th>
-                    <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">{t('employees.table.role')}</th>
-                    <th className="text-left px-4 py-3 font-medium hidden md:table-cell">{t('employees.table.contact')}</th>
-                    <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">{t('employees.table.phone')}</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {employees.map((e) => (
-                    <tr key={e.id} className="border-b border-gray-100 hover:bg-gray-50 last:border-0">
-                      <td className="px-4 py-3 font-medium text-gray-900">{e.name}</td>
-                      <td className="px-4 py-3 text-gray-500 hidden sm:table-cell capitalize">{e.role}</td>
-                      <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{e.email ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">{e.phone ?? '—'}</td>
-                      <td className="px-4 py-3 text-right">
-                        {confirmDeleteEmpId === e.id ? (
-                          <div className="flex justify-end items-center gap-2">
-                            <span className="text-xs text-gray-500">{t('employees.deleteConfirm')}</span>
-                            <button onClick={() => deleteEmployee(e.id)} className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600">{t('employees.deleteYes')}</button>
-                            <button onClick={() => setConfirmDeleteEmpId(null)} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50">{t('employees.deleteNo')}</button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-1">
-                            <button onClick={() => { setEmpForm(e); setEditingEmp(e.id) }} className="p-1.5 hover:bg-gray-100 rounded"><Pencil className="w-3.5 h-3.5 text-gray-500" /></button>
-                            <button onClick={() => setConfirmDeleteEmpId(e.id)} className="p-1.5 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">{editingEmp ? t('employees.editHeading') : t('employees.addHeading')}</h3>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {([
-                { key: 'name', label: t('employees.fields.name'), type: 'text' },
-                { key: 'role', label: t('employees.fields.role'), type: 'text' },
-                { key: 'email', label: t('employees.fields.email'), type: 'email' },
-                { key: 'phone', label: t('employees.fields.phone'), type: 'tel' },
-              ] as { key: keyof Employee; label: string; type: string }[]).map(({ key, label, type }) => (
-                <div key={key}>
-                  <label className="text-xs font-medium text-gray-500">{label}</label>
-                  <input type={type} value={(empForm[key] as string) ?? ''}
-                    onChange={(e) => setEmpForm((f) => ({ ...f, [key]: e.target.value }))}
-                    className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2 mt-4">
-              {editingEmp && <Button variant="outline" onClick={() => { setEmpForm({}); setEditingEmp(null) }}>{t('employees.cancelButton')}</Button>}
-              <Button onClick={saveEmployee} disabled={!empForm.name}>
-                <Plus className="w-4 h-4 mr-1" />{editingEmp ? t('employees.updateButton') : t('employees.addButton')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notifications — Agelya uses Evolution API only */}
-      {tab === 'notifications' && <EvolutionSettings />}
-
-      {/* Billing — self-hosted info */}
-      {tab === 'billing' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-2">{t('tabs.billing')}</h2>
-            <p className="text-sm text-gray-500 mb-4">
-              You are running the self-hosted version of Agelya. All features are available without subscription.
-            </p>
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <p className="text-sm font-medium text-green-800 mb-1">Self-hosted — All features unlocked</p>
-              <p className="text-sm text-green-700">
-                All Pro/Agency features are available to you at no charge.
-                Manage your instance via Docker Compose.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modules */}
-      {tab === 'modules' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-            <div>
-              <h2 className="font-semibold text-gray-900">{t('modules.heading')}</h2>
-              <p className="text-sm text-gray-500 mt-1">{t('modules.description')}</p>
-            </div>
-
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">{t('modules.presetsLabel')}</p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { labelKey: 'modules.presets.salon' as const, modules: ['bookings','crm','pos','inventory','notifications'] },
-                  { labelKey: 'modules.presets.shop'  as const, modules: ['inventory','pos','notifications'] },
-                  { labelKey: 'modules.presets.cafe'  as const, modules: ['pos','crm','inventory','notifications'] },
-                  { labelKey: 'modules.presets.all'   as const, modules: DEFAULT_MODULES },
-                ].map((preset) => (
-                  <button
-                    key={preset.labelKey}
-                    onClick={() => setEnabledModules(preset.modules)}
-                    className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 hover:border-blue-400 hover:text-blue-700 transition-colors"
-                  >
-                    {t(preset.labelKey)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-2 border-t border-gray-100">
-              {(Object.keys(MODULES) as ModuleKey[]).map((key) => {
-                const on = enabledModules.includes(key)
-                const modLabel = t(`modules.items.${key}.label` as Parameters<typeof t>[0])
-                return (
-                  <div key={key}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{modLabel}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{t(`modules.items.${key}.description` as Parameters<typeof t>[0])}</p>
+              <div className="divide-y divide-gray-100">
+                {services.map((service) => (
+                  <div key={service.id} className="p-4 flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-sm text-gray-900">{service.name}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {service.duration_min} min · {new Intl.NumberFormat(undefined, { style: 'currency', currency: business.currency || 'BRL' }).format(service.price)}
                       </div>
-                      <button
-                        onClick={() => {
-                          if (on) {
-                            setConfirmModule(key)
-                          } else {
-                            setEnabledModules((prev) => [...prev, key])
-                          }
-                        }}
-                        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${on ? 'bg-blue-600' : 'bg-gray-200'}`}
-                      >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${on ? 'translate-x-6' : 'translate-x-1'}`} />
-                      </button>
                     </div>
-                    {confirmModule === key && (
-                      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3">
-                        <p className="text-xs text-amber-800">{t('modules.confirmOff', { label: modLabel })}</p>
-                        <div className="flex gap-2 shrink-0">
-                          <button
-                            onClick={() => setConfirmModule(null)}
-                            className="text-xs px-3 py-1.5 rounded-md border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
-                          >
-                            {t('modules.cancelButton')}
-                          </button>
-                          <button
-                            onClick={() => { setEnabledModules((prev) => prev.filter((m) => m !== key)); setConfirmModule(null) }}
-                            className="text-xs px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
-                          >
-                            {t('modules.turnOffButton')}
-                          </button>
-                        </div>
+                    <button onClick={() => editService(service)} className="p-2 rounded-lg hover:bg-gray-100"><Pencil className="w-4 h-4 text-gray-500" /></button>
+                    {deleteServiceId === service.id ? (
+                      <div className="flex gap-1">
+                        <button onClick={() => deleteService(service.id)} className="text-xs px-2 py-1 rounded bg-red-600 text-white">{t('services.deleteYes')}</button>
+                        <button onClick={() => setDeleteServiceId(null)} className="text-xs px-2 py-1 rounded border">{t('services.deleteNo')}</button>
                       </div>
+                    ) : (
+                      <button onClick={() => setDeleteServiceId(service.id)} className="p-2 rounded-lg hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-400" /></button>
                     )}
                   </div>
-                )
-              })}
-            </div>
-
-            <button
-              onClick={async () => {
-                setModulesSaving(true)
-                setModulesSaved(false)
-                await fetch('/api/business/modules', {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ enabled_modules: enabledModules }),
-                })
-                setModulesSaving(false)
-                setModulesSaved(true)
-                router.refresh()
-                setTimeout(() => setModulesSaved(false), 2500)
-              }}
-              disabled={modulesSaving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {modulesSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : modulesSaved ? <Check className="w-4 h-4" /> : null}
-              {modulesSaved ? t('modules.saved') : t('modules.saveButton')}
-            </button>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+            <h2 className="font-semibold text-gray-900 mb-4">{editingServiceId ? t('services.editHeading') : t('services.addHeading')}</h2>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label={t('services.fields.name')}>
+                <input value={serviceForm.name ?? ''} onChange={(e) => setServiceForm((current) => ({ ...current, name: e.target.value }))} className="input" />
+              </Field>
+              <Field label={t('services.fields.category')}>
+                <input value={serviceForm.category ?? ''} onChange={(e) => setServiceForm((current) => ({ ...current, category: e.target.value }))} className="input" />
+              </Field>
+              <Field label={t('services.fields.price')}>
+                <input type="number" min="0" step="0.01" value={serviceForm.price ?? ''} onChange={(e) => setServiceForm((current) => ({ ...current, price: Number(e.target.value) }))} className="input" />
+              </Field>
+              <Field label={t('services.fields.duration')}>
+                <input type="number" min="5" step="5" value={serviceForm.duration_min ?? 60} onChange={(e) => setServiceForm((current) => ({ ...current, duration_min: Number(e.target.value) }))} className="input" />
+              </Field>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <Button onClick={saveService} disabled={!serviceForm.name || serviceForm.price == null}>
+                <Plus className="w-4 h-4 mr-2" />{editingServiceId ? t('services.updateButton') : t('services.addButton')}
+              </Button>
+              {editingServiceId && <Button variant="outline" onClick={resetServiceForm}>{t('services.cancelButton')}</Button>}
+            </div>
+          </div>
+        </section>
       )}
 
-      {/* Account */}
-      {tab === 'account' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-4">{t('account.heading')}</h2>
-            <div className="space-y-3 max-w-sm">
-              <div>
-                <label className="text-xs font-medium text-gray-500">{t('account.currentEmailLabel')}</label>
-                <div className="mt-1 flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 bg-gray-50">
-                  <span className="text-sm text-gray-700 flex-1">{userEmail}</span>
-                </div>
+      {tab === 'employees' && (
+        <section className="space-y-4">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {employees.length === 0 ? (
+              <p className="p-6 text-sm text-gray-500">{t('employees.empty')}</p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {employees.map((employee) => (
+                  <div key={employee.id} className="p-4 flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-sm text-gray-900">{employee.name}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{employee.role}{employee.phone ? ` · ${employee.phone}` : ''}</div>
+                    </div>
+                    <button onClick={() => editEmployee(employee)} className="p-2 rounded-lg hover:bg-gray-100"><Pencil className="w-4 h-4 text-gray-500" /></button>
+                    {deleteEmployeeId === employee.id ? (
+                      <div className="flex gap-1">
+                        <button onClick={() => deleteEmployee(employee.id)} className="text-xs px-2 py-1 rounded bg-red-600 text-white">{t('employees.deleteYes')}</button>
+                        <button onClick={() => setDeleteEmployeeId(null)} className="text-xs px-2 py-1 rounded border">{t('employees.deleteNo')}</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setDeleteEmployeeId(employee.id)} className="p-2 rounded-lg hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                    )}
+                  </div>
+                ))}
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500">{t('account.newEmailLabel')}</label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => { setNewEmail(e.target.value); setEmailStatus('idle') }}
-                  placeholder={t('account.newEmailPlaceholder')}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {emailStatus === 'ok' && (
-                <div className="flex items-start gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> {emailMsg}
-                </div>
-              )}
-              {emailStatus === 'error' && (
-                <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" /> {emailMsg}
-                </div>
-              )}
-
-              <Button
-                onClick={changeEmail}
-                variant="outline"
-                disabled={emailStatus === 'loading' || !newEmail}
-              >
-                {emailStatus === 'loading'
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('account.saving')}</>
-                  : t('account.changeEmailButton')}
-              </Button>
-              <p className="text-xs text-gray-400">{t('account.emailHint')}</p>
-            </div>
+            )}
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">{t('account.passwordHeading')}</h3>
-            <div className="space-y-3 max-w-sm">
-              <div>
-                <label className="text-xs font-medium text-gray-500">{t('account.newPasswordLabel')}</label>
+          <div className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+            <h2 className="font-semibold text-gray-900 mb-4">{editingEmployeeId ? t('employees.editHeading') : t('employees.addHeading')}</h2>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label={t('employees.fields.name')}>
+                <input value={employeeForm.name ?? ''} onChange={(e) => setEmployeeForm((current) => ({ ...current, name: e.target.value }))} className="input" />
+              </Field>
+              <Field label={t('employees.fields.role')}>
+                <input value={employeeForm.role ?? ''} onChange={(e) => setEmployeeForm((current) => ({ ...current, role: e.target.value }))} className="input" />
+              </Field>
+              <Field label={t('employees.fields.email')}>
+                <input type="email" value={employeeForm.email ?? ''} onChange={(e) => setEmployeeForm((current) => ({ ...current, email: e.target.value }))} className="input" />
+              </Field>
+              <Field label={t('employees.fields.phone')}>
+                <input type="tel" value={employeeForm.phone ?? ''} onChange={(e) => setEmployeeForm((current) => ({ ...current, phone: e.target.value }))} className="input" />
+              </Field>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <Button onClick={saveEmployee} disabled={!employeeForm.name}>
+                <Plus className="w-4 h-4 mr-2" />{editingEmployeeId ? t('employees.updateButton') : t('employees.addButton')}
+              </Button>
+              {editingEmployeeId && <Button variant="outline" onClick={resetEmployeeForm}>{t('employees.cancelButton')}</Button>}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {tab === 'notifications' && <EvolutionSettings />}
+
+      {tab === 'account' && (
+        <div className="space-y-6">
+          <section className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+            <h2 className="font-semibold text-gray-900 mb-4">{t('account.heading')}</h2>
+            <p className="text-sm text-gray-500 mb-4">{t('account.currentEmailLabel')}: <strong className="text-gray-700">{userEmail}</strong></p>
+            <Field label={t('account.newEmailLabel')}>
+              <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder={t('account.newEmailPlaceholder')} className="input" />
+            </Field>
+            <Button className="mt-3" variant="outline" onClick={changeEmail} disabled={emailStatus === 'loading' || !newEmail}>
+              {emailStatus === 'loading' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t('account.changeEmailButton')}
+            </Button>
+            {emailMessage && <StatusMessage status={emailStatus} text={emailMessage} />}
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+            <h2 className="font-semibold text-gray-900 mb-4">{t('account.passwordHeading')}</h2>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label={t('account.newPasswordLabel')}>
                 <div className="relative mt-1">
-                  <input
-                    type={showPw ? 'text' : 'password'}
-                    value={pwForm.newPassword}
-                    onChange={(e) => setPwForm((f) => ({ ...f, newPassword: e.target.value }))}
-                    placeholder="Min. 8 characters"
-                    className="w-full border border-gray-200 rounded-lg pl-3 pr-9 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button type="button" onClick={() => setShowPw((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <input type={showPassword ? 'text' : 'password'} value={passwordForm.password} onChange={(e) => setPasswordForm((current) => ({ ...current, password: e.target.value }))} className="input mt-0 pr-10" />
+                  <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500">{t('account.confirmPasswordLabel')}</label>
-                <input
-                  type={showPw ? 'text' : 'password'}
-                  value={pwForm.confirm}
-                  onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))}
-                  placeholder={t('account.confirmPasswordPlaceholder')}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {pwStatus === 'ok' && (
-                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" /> {pwMsg}
-                </div>
-              )}
-              {pwStatus === 'error' && (
-                <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" /> {pwMsg}
-                </div>
-              )}
-
-              <Button
-                onClick={changePassword}
-                disabled={pwStatus === 'loading' || !pwForm.newPassword || !pwForm.confirm}
-              >
-                {pwStatus === 'loading'
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('account.saving')}</>
-                  : t('account.changePasswordButton')}
-              </Button>
+              </Field>
+              <Field label={t('account.confirmPasswordLabel')}>
+                <input type={showPassword ? 'text' : 'password'} value={passwordForm.confirm} onChange={(e) => setPasswordForm((current) => ({ ...current, confirm: e.target.value }))} placeholder={t('account.confirmPasswordPlaceholder')} className="input" />
+              </Field>
             </div>
-          </div>
+            <Button className="mt-3" onClick={changePassword} disabled={passwordStatus === 'loading' || !passwordForm.password || !passwordForm.confirm}>
+              {passwordStatus === 'loading' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t('account.changePasswordButton')}
+            </Button>
+            {passwordMessage && <StatusMessage status={passwordStatus} text={passwordMessage} />}
+          </section>
         </div>
       )}
+
+      <style jsx>{`
+        :global(.input) {
+          width: 100%;
+          margin-top: 0.25rem;
+          border: 1px solid rgb(229 231 235);
+          border-radius: 0.5rem;
+          padding: 0.55rem 0.75rem;
+          font-size: 0.875rem;
+          background: white;
+          outline: none;
+        }
+        :global(.input:focus) {
+          border-color: rgb(34 197 94);
+          box-shadow: 0 0 0 2px rgb(34 197 94 / 0.15);
+        }
+      `}</style>
     </div>
+  )
+}
+
+function Field({ label, children, className = '' }: { label: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={className}>
+      <label className="text-xs font-medium text-gray-500">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function StatusMessage({ status, text }: { status: 'idle' | 'loading' | 'ok' | 'error'; text: string }) {
+  return (
+    <p className={`text-sm mt-3 ${status === 'error' ? 'text-red-600' : status === 'ok' ? 'text-green-600' : 'text-gray-500'}`}>
+      {text}
+    </p>
   )
 }

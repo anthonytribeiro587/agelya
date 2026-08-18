@@ -13,54 +13,6 @@
     "signIn": "Accedi",
     "startFree": "Inizia gratis"
   },
-  "landing": {
-    "badge": "Open source · Licenza MIT · Docker in un solo comando",
-    "headline": "Gestione aziendale per attività di servizi",
-    "subheadline": "POS · CRM · Inventario · Prenotazioni · Notifiche omnicanale.",
-    "pitch": "I tuoi dati, il tuo server. Zero commissioni.",
-    "ctaPrimary": "Inizia gratuitamente",
-    "ctaGithub": "Visualizza su GitHub",
-    "featuresHeading": "Tutto quello che ti serve, niente di superfluo",
-    "features": {
-      "pos": "POS / Cassa — 3 clic per completare una vendita",
-      "crm": "CRM — cronologia cliente completa in 1 secondo",
-      "inventory": "Inventario con avvisi di scorte in esaurimento",
-      "booking": "Calendario + prenotazione online senza registrazione",
-      "notifications": "Notifiche Telegram e Viber (gratuite)",
-      "hosting": "SaaS multi-tenant o self-hosted tramite Docker"
-    },
-    "pricingHeading": "Prezzi semplici e trasparenti",
-    "pricingSubheading": "Oppure ospitalo sul tuo server gratuitamente —",
-    "pricingSubheadingLink": "clona su GitHub",
-    "mostPopular": "Più popolare",
-    "footer": "Agelya © 2026 · Licenza MIT",
-    "plans": {
-      "free": {
-        "name": "Free",
-        "price": "$0",
-        "limit": "1 dipendente · 100 clienti",
-        "cta": "Inizia ora"
-      },
-      "starter": {
-        "name": "Starter",
-        "price": "$19/mese",
-        "limit": "3 dipendenti · 1.000 clienti",
-        "cta": "Inizia ora"
-      },
-      "pro": {
-        "name": "Pro",
-        "price": "$39/mese",
-        "limit": "15 dipendenti · illimitati",
-        "cta": "Inizia ora"
-      },
-      "agency": {
-        "name": "Agency",
-        "price": "$79/mese",
-        "limit": "Multi-sede · white-label",
-        "cta": "Contattaci"
-      }
-    }
-  },
   "auth": {
     "login": {
       "heading": "Accedi al tuo account",
@@ -79,14 +31,13 @@
     },
     "register": {
       "heading": "Crea il tuo account",
-      "subheading": "Piano gratuito per sempre · Nessuna carta di credito richiesta",
       "businessNameLabel": "Nome dell'attività",
       "businessNamePlaceholder": "Salone di Maya",
       "emailLabel": "Email",
       "emailPlaceholder": "tuoindirizzo@esempio.com",
       "passwordLabel": "Password",
       "passwordPlaceholder": "Min. 8 caratteri",
-      "submitButton": "Crea account gratuito",
+      "submitButton": "Crea account",
       "alreadyHaveAccount": "Hai già un account?",
       "signIn": "Accedi",
       "errorNoName": "Il nome dell'attività è obbligatorio",
@@ -127,17 +78,11 @@
     "steps": {
       "businessType": "Tipo di attività",
       "firstService": "Primo servizio",
-      "notifications": "Notifiche"
+      "notifications": "WhatsApp"
     },
     "businessTypes": {
       "salon": "💇 Bellezza / Salone",
-      "barbershop": "✂️ Barbiere",
-      "auto_repair": "🔧 Officina meccanica",
-      "cafe": "☕ Caffè / Ristorante",
-      "dental": "🦷 Clinica dentale",
-      "fitness": "💪 Fitness / Palestra",
       "massage": "💆 Massaggi / Spa",
-      "shop": "🏪 Negozio / Chiosco",
       "other": "🏢 Altro"
     },
     "step0": {
@@ -190,14 +135,11 @@
       "upgradeLaterButton": "Forse più tardi, rimani sul piano Free"
     },
     "step2": {
-      "heading": "Configura le notifiche",
-      "subheading": "L'email è già pronta all'uso. Facoltativamente potrai collegare Telegram, Viber o WhatsApp in seguito in Impostazioni → Notifiche.",
-      "emailChannel": "Email (Resend / SMTP)",
-      "emailChannelSub": "Conferme di prenotazione e promemoria",
-      "emailChannelStatus": "Abilitato automaticamente",
-      "messengerChannel": "Telegram · Viber · WhatsApp",
-      "messengerChannelSub": "Aggiungi i token in seguito in Impostazioni → Notifiche",
-      "messengerChannelStatus": "Facoltativo",
+      "heading": "Configura WhatsApp",
+      "subheading": "Agelya usa WhatsApp per conferme, promemoria e messaggi automatici tramite Evolution API.",
+      "messengerChannel": "WhatsApp tramite Evolution API",
+      "messengerChannelSub": "Collega la tua istanza in seguito in Impostazioni → Notifiche.",
+      "messengerChannelStatus": "Configura dopo",
       "back": "Indietro",
       "settingUp": "Configurazione in corso…",
       "submit": "Vai alla dashboard →",
@@ -498,21 +440,6 @@
       "account": "Account",
       "modules": "Moduli"
     },
-    "billing": {
-      "heading": "Piano attuale",
-      "planSuffix": "piano",
-      "freePlan": "Free",
-      "activePlan": "Attivo",
-      "renewsOn": "Si rinnova il",
-      "employees": "Dipendenti",
-      "clients": "Clienti",
-      "manageSubscription": "Gestisci abbonamento",
-      "mostPopular": "Più popolare",
-      "upgrade": "Passa di livello →",
-      "currentPlan": "Piano attuale",
-      "successMessage": "Abbonamento attivato! Grazie per essere passato al piano superiore.",
-      "errorMessage": "Qualcosa è andato storto. Riprova o contatta l'assistenza."
-    },
     "account": {
       "heading": "Il mio account",
       "currentEmailLabel": "Email attuale",
@@ -565,11 +492,6 @@
       "typeDefault": "— seleziona —",
       "types": {
         "salon": "💇 Bellezza / Salone",
-        "barbershop": "✂️ Barbiere",
-        "auto_repair": "🔧 Officina meccanica",
-        "cafe": "☕ Caffè / Ristorante",
-        "dental": "🦷 Clinica dentale",
-        "fitness": "💪 Fitness / Palestra",
         "massage": "💆 Massaggi / Spa",
         "other": "🏢 Altro"
       },
@@ -646,135 +568,6 @@
       "deleteNo": "Annulla",
       "limitBannerTitle": "Limite massimo di membri del team raggiunto.",
       "limitBannerDesc": "Passa al piano Starter per aggiungere fino a 5 membri del team."
-    },
-    "notifications": {
-      "heading": "Canali di notifica",
-      "email": {
-        "label": "Email",
-        "connected": "Collegato",
-        "notSet": "Non configurato",
-        "smtpOption": "Server SMTP",
-        "resendOption": "API Resend",
-        "smtpHost": "Host SMTP",
-        "smtpPort": "Porta SMTP",
-        "smtpUser": "Nome utente",
-        "smtpPass": "Password",
-        "smtpPassHint": "Per Gmail: usa una Password per le app — myaccount.google.com → Sicurezza → Verifica in 2 passaggi → Password per le app",
-        "smtpFrom": "Indirizzo del mittente",
-        "smtpHostPlaceholder": "smtp.gmail.com",
-        "smtpFromPlaceholder": "ciao@miaattivita.com",
-        "resendApiKey": "Chiave API",
-        "resendApiKeyPlaceholder": "re_...",
-        "resendSignup": "Ottieni una chiave API gratuita su resend.com"
-      },
-      "telegram": {
-        "label": "Bot Telegram",
-        "connected": "Collegato",
-        "notSet": "Non configurato",
-        "description": "Crea un bot tramite @BotFather e incolla il token qui sotto.",
-        "placeholder": "123456789:AAABBB...",
-        "connectButton": "Collega",
-        "step1": "Apri <a href=\"https://t.me/BotFather\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-blue-600 hover:underline\">@BotFather</a> su Telegram → <code class=\"bg-gray-100 px-1 rounded\">/newbot</code> → copia il token",
-        "step2": "Incolla il token qui sotto e clicca su Collega",
-        "step3": "Apri il tuo nuovo bot su Telegram dal tuo account aziendale e invia <code class=\"bg-gray-100 px-1 rounded\">/start</code> — questo registrerà la chat per ricevere le notifiche"
-      },
-      "viber": {
-        "label": "Bot Viber",
-        "connected": "Collegato",
-        "notSet": "Non configurato",
-        "description": "Crea un bot su partners.viber.com e incolla il token di autenticazione.",
-        "placeholder": "Token di autenticazione Viber",
-        "connectButton": "Collega",
-        "step1": "Vai su <a href=\"https://developers.viber.com\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-blue-600 hover:underline\">developers.viber.com</a> → crea un bot → copia il token",
-        "step2": "Incolla il token qui sotto e clicca su Collega",
-        "step3": "Apri il tuo bot su Viber dal tuo account aziendale e invia <code class=\"bg-gray-100 px-1 rounded\">/start</code> — questo registrerà la chat per ricevere le notifiche"
-      },
-      "whatsapp": {
-        "label": "WhatsApp (Meta Cloud API)",
-        "connected": "Collegato",
-        "notSet": "Non configurato",
-        "description": "Invia messaggi direttamente ai clienti che hanno un numero WhatsApp salvato nel CRM.",
-        "phoneNumberId": "ID numero di telefono",
-        "phoneNumberIdPlaceholder": "1234567890",
-        "accessToken": "Token di accesso",
-        "accessTokenPlaceholder": "EAABs...",
-        "saveButton": "Salva credenziali",
-        "step1": "Vai su <a href=\"https://developers.facebook.com\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-blue-600 hover:underline\">developers.facebook.com</a> → crea una Meta App → aggiungi il prodotto <strong>WhatsApp</strong>",
-        "step2": "In <strong>WhatsApp → Configurazione API</strong> copia l'<em>ID numero di telefono</em> e un <strong>token di accesso permanente</strong> (creato tramite l'Utente di sistema in Meta Business Manager — consigliato)",
-        "step3": "Incollali entrambi qui sotto e clicca su {saveButton}",
-        "step4": "Aggiungi il numero WhatsApp di un cliente nel CRM → pagina cliente — riceverà le notifiche automaticamente"
-      },
-      "ownerWhatsapp": {
-        "label": "Il tuo numero WhatsApp (per gli avvisi)",
-        "description": "Inserisci il tuo numero WhatsApp personale per ricevere avvisi sulle scorte in esaurimento e altre notifiche per il proprietario. Formato: +393001234567",
-        "placeholder": "+393001234567"
-      },
-      "save": "Salva",
-      "saving": "Salvataggio in corso…",
-      "saved": "Salvato ✓",
-      "triggersHeading": "Trigger automatici",
-      "triggers": {
-        "confirmation": "Conferma della prenotazione — istantanea",
-        "reminder24h": "Promemoria — 24 ore prima",
-        "reminder1h": "Promemoria — 1 ora prima",
-        "thankYou": "Ringraziamento — dopo la visita",
-        "reactivation": "Riattivazione — nessuna visita da 30 giorni",
-        "birthday": "Auguri di compleanno",
-        "lowStock": "Avviso scorte in esaurimento (email)"
-      },
-      "waTemplates": {
-        "heading": "Modelli WhatsApp",
-        "description": "Inserisci i nomi dei modelli approvati nel tuo Meta Business Manager. Lascia vuoto per saltare l'invio tramite WhatsApp per quell'evento.",
-        "confirmation": "Nome del modello di conferma",
-        "confirmationPlaceholder": "es. booking_confirmation",
-        "reminder": "Nome del modello di promemoria",
-        "reminderPlaceholder": "es. appointment_reminder",
-        "thankyou": "Nome del modello di ringraziamento",
-        "thankyouPlaceholder": "es. visit_thankyou",
-        "reengagement": "Nome del modello di riattivazione",
-        "reengagementPlaceholder": "es. client_reactivation",
-        "birthday": "Nome del modello di compleanno",
-        "birthdayPlaceholder": "es. happy_birthday",
-        "language": "Lingua del modello"
-      }
-    },
-    "modules": {
-      "heading": "Moduli delle funzionalità",
-      "description": "Scegli quali funzionalità sono attive per la tua attività. I dati non vengono mai eliminati quando un modulo viene disattivato — riappariranno non appena lo riabiliterai.",
-      "presetsLabel": "Preimpostazioni rapide",
-      "presets": {
-        "salon": "💇 Salone / Barbiere",
-        "shop": "🏪 Negozio / Chiosco",
-        "cafe": "☕ Caffè",
-        "all": "✳️ Tutti i moduli"
-      },
-      "confirmOff": "I dati non vengono mai eliminati — riappariranno quando il modulo verrà riattivato. Disattivare {label}?",
-      "cancelButton": "Annulla",
-      "turnOffButton": "Disattiva",
-      "saveButton": "Salva moduli",
-      "saved": "Salvato!",
-      "items": {
-        "bookings": {
-          "label": "Prenotazioni e Calendario",
-          "description": "Appuntamenti, orari, assegnazioni del personale"
-        },
-        "crm": {
-          "label": "CRM e Clienti",
-          "description": "Schede clienti, cronologia visite, tag e note"
-        },
-        "pos": {
-          "label": "POS e Cassa",
-          "description": "Vendite, pagamenti, ricevute"
-        },
-        "inventory": {
-          "label": "Inventario",
-          "description": "Scorte, prodotti, avvisi sottoscorta"
-        },
-        "notifications": {
-          "label": "Notifiche",
-          "description": "Promemoria tramite Telegram, WhatsApp, Viber ed Email"
-        }
-      }
     }
   },
   "sidebar": {
@@ -838,10 +631,6 @@
       "heading": "Prenotazione confermata!",
       "body": "Il tuo appuntamento è confermato. A presto!",
       "bookAnother": "Prenota un altro",
-      "optInHeading": "Ricevi i promemoria sulla tua app di messaggistica",
-      "optInSub": "Tocca qui sotto per ricevere i promemoria degli appuntamenti su Telegram o Viber — senza alcuna registrazione.",
-      "telegramButton": "Ricevi promemoria su Telegram",
-      "viberButton": "Ricevi promemoria su Viber",
       "pendingHeading": "Orario riservato!",
       "pendingBody": "Ti abbiamo inviato un messaggio WhatsApp. Rispondi SÌ per confermare l’appuntamento."
     },
@@ -955,16 +744,7 @@
       "notesPlaceholder": "Aggiungi una nota…",
       "tags": "Tag",
       "tagsPlaceholder": "tag1, tag2…",
-      "whatsappNumber": "WhatsApp",
-      "messengers": "App di messaggistica",
-      "connected": "Collegato ✓",
-      "notConnected": "Non collegato",
-      "telegram": "Telegram",
-      "viber": "Viber",
-      "telegramShareTitle": "Condividi questo link con il cliente per collegare le notifiche di Telegram",
-      "telegramConnectFirst": "Prima configura il bot Telegram nelle Impostazioni",
-      "copiedLink": "✓ Copiato",
-      "copyLink": "Copia link"
+      "whatsappNumber": "WhatsApp"
     },
     "phoneInvalid": "Inserisci un numero di telefono valido (solo cifre)",
     "dateInvalid": "Inserisci una data valida",
@@ -1069,68 +849,6 @@
       "typeIn": "entrata",
       "typeOut": "uscita",
       "typeAdjustment": "rettifica"
-    }
-  },
-  "billing": {
-    "heading": "Il tuo piano",
-    "planSuffix": "piano",
-    "freePlan": "Free",
-    "activePlan": "Attivo",
-    "renewsOn": "Si rinnova il",
-    "employees": "Dipendenti",
-    "clients": "Clienti",
-    "manageSubscription": "Gestisci abbonamento",
-    "mostPopular": "Più popolare",
-    "upgrade": "Passa di livello →",
-    "currentPlan": "Piano attuale",
-    "successMessage": "🎉 Abbonamento attivato! Grazie per essere passato al piano superiore.",
-    "errorMessage": "Qualcosa è andato svoltato. Riprova o contatta l'assistenza.",
-    "currentPlanBadge": "Piano attuale",
-    "upgradeButton": "Passa di livello",
-    "downgradeButton": "Riduci livello",
-    "cancelNote": "Per annullare l'abbonamento, gestiscilo direttamente su",
-    "plans": {
-      "free": {
-        "name": "Free",
-        "price": "$0",
-        "features": [
-          "1 dipendente",
-          "100 clienti",
-          "50 prenotazioni/mese",
-          "POS · CRM · Inventario",
-          "Tutte le notifiche"
-        ]
-      },
-      "starter": {
-        "name": "Starter",
-        "price": "$19/mese",
-        "features": [
-          "5 dipendenti",
-          "Clienti illimitati",
-          "Prenotazioni illimitate"
-        ]
-      },
-      "pro": {
-        "name": "Pro",
-        "price": "$39/mese",
-        "features": [
-          "15 dipendenti",
-          "Clienti illimitati",
-          "Analisi",
-          "Programma fedeltà",
-          "Dominio personalizzato"
-        ]
-      },
-      "agency": {
-        "name": "Agency",
-        "price": "$79/mese",
-        "features": [
-          "Dipendenti illimitati",
-          "Sedi multiple",
-          "White-label",
-          "Accesso API"
-        ]
-      }
     }
   },
   "newClient": {
