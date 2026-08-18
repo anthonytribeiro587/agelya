@@ -1,34 +1,33 @@
 # Agelya
 
-Plataforma de agenda e gestão para profissionais de **beleza, bem-estar e terapias**, iniciando pelo fluxo de massoterapia.
+**Organize. Atenda. Cresça.**
+
+Agelya é uma plataforma de agenda e gestão para profissionais de beleza, bem-estar e terapias, com o primeiro fluxo voltado à massoterapia.
+
+## Recursos atuais
+
+- agenda administrativa e página pública de agendamento;
+- prevenção de conflito de horários;
+- cadastro e histórico de clientes;
+- serviços e profissionais;
+- caixa e histórico de recebimentos;
+- WhatsApp via Evolution API;
+- automações configuráveis de confirmação, lembretes e pós-atendimento;
+- confirmação do agendamento por resposta no WhatsApp;
+- autenticação com Supabase e isolamento de dados por negócio.
 
 ## Fundação técnica
-
-A Agelya parte da edição self-hosted do [Pronto](https://github.com/SGrappelli/pronto), sob licença MIT, e mantém a atribuição correspondente no arquivo `LICENSE` e no histórico deste projeto.
-
-Stack principal:
 
 - Next.js 14 + React + TypeScript
 - Supabase Auth + PostgreSQL + RLS
 - Tailwind CSS
-- Agenda pública e painel administrativo
-- CRM, serviços, profissionais, caixa/POS e estoque
-- PWA e Docker
+- Vercel
+- Evolution API
 
-## Direção do produto
+## Próximas etapas do vertical de massoterapia
 
-O primeiro vertical da Agelya é **massoterapia**, com foco em:
+A estrutura de banco já contempla pacotes de sessões, anamnese, consentimento e evolução de atendimento. As respectivas telas serão incorporadas conforme o produto evoluir.
 
-- agenda diária/semanal e prevenção de conflito de horários;
-- cadastro e histórico de clientes;
-- serviços, duração e intervalo entre sessões;
-- pacotes de sessões e saldo restante;
-- anamnese e consentimento;
-- ficha de evolução por atendimento;
-- financeiro simples;
-- confirmação e lembretes por WhatsApp;
-- página pública de agendamento.
+## Licenças
 
-## Status
-
-Esta branch importa a versão mais recente do Pronto e aplica a fundação inicial da marca Agelya. Antes de produção ainda serão revisados multiempresa, LGPD, dados sensíveis de saúde, integrações e identidade visual final.
+A Agelya utiliza e modifica software de terceiros sob licenças compatíveis. Os avisos e atribuições legais aplicáveis permanecem preservados no arquivo `LICENSE` e no histórico do repositório.
