@@ -1,0 +1,143 @@
+name: Validate Agelya cleanup
+
+on:
+  push:
+    branches: [cleanup/pronto-remnants]
+    paths: ['.github/workflows/cleanup-pronto-branch.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/pronto-remnants
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Remove legacy translation content
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const values = {
+            pt: {
+              step: 'WhatsApp',
+              heading: 'Configure o WhatsApp',
+              sub: 'A Agelya usa o WhatsApp para confirmações, lembretes e mensagens automáticas. A conexão é feita pela Evolution API.',
+              channel: 'WhatsApp via Evolution API',
+              channelSub: 'Conecte sua instância depois em Configurações → Notificações.',
+              status: 'Configurar depois',
+            },
+            en: {
+              step: 'WhatsApp',
+              heading: 'Set up WhatsApp',
+              sub: 'Agelya uses WhatsApp for confirmations, reminders and automated messages through Evolution API.',
+              channel: 'WhatsApp via Evolution API',
+              channelSub: 'Connect your instance later in Settings → Notifications.',
+              status: 'Set up later',
+            },
+            es: {
+              step: 'WhatsApp',
+              heading: 'Configura WhatsApp',
+              sub: 'Agelya usa WhatsApp para confirmaciones, recordatorios y mensajes automáticos mediante Evolution API.',
+              channel: 'WhatsApp vía Evolution API',
+              channelSub: 'Conecta tu instancia después en Configuración → Notificaciones.',
+              status: 'Configurar después',
+            },
+            it: {
+              step: 'WhatsApp',
+              heading: 'Configura WhatsApp',
+              sub: 'Agelya usa WhatsApp per conferme, promemoria e messaggi automatici tramite Evolution API.',
+              channel: 'WhatsApp tramite Evolution API',
+              channelSub: 'Collega la tua istanza in seguito in Impostazioni → Notifiche.',
+              status: 'Configura dopo',
+            },
+          }
+
+          for (const locale of ['pt', 'en', 'es', 'it']) {
+            const path = `messages/${locale}.json`
+            const data = JSON.parse(fs.readFileSync(path, 'utf8'))
+            const v = values[locale]
+
+            if (data.onboarding?.steps) data.onboarding.steps.notifications = v.step
+            if (data.onboarding?.step2) {
+              data.onboarding.step2.heading = v.heading
+              data.onboarding.step2.subheading = v.sub
+              data.onboarding.step2.messengerChannel = v.channel
+              data.onboarding.step2.messengerChannelSub = v.channelSub
+              data.onboarding.step2.messengerChannelStatus = v.status
+              delete data.onboarding.step2.emailChannel
+              delete data.onboarding.step2.emailChannelSub
+              delete data.onboarding.step2.emailChannelStatus
+            }
+
+            const keepBusinessTypes = ['massage', 'salon', 'other']
+            if (data.onboarding?.businessTypes) {
+              for (const key of Object.keys(data.onboarding.businessTypes)) {
+                if (!keepBusinessTypes.includes(key)) delete data.onboarding.businessTypes[key]
+              }
+            }
+            if (data.settings?.general?.types) {
+              for (const key of Object.keys(data.settings.general.types)) {
+                if (!keepBusinessTypes.includes(key)) delete data.settings.general.types[key]
+              }
+            }
+
+            delete data.landing
+            delete data.billing
+            if (data.settings) {
+              delete data.settings.billing
+              delete data.settings.modules
+              delete data.settings.notifications
+            }
+
+            if (data.clientDetail?.fields) {
+              for (const key of ['messengers','connected','notConnected','telegram','viber','telegramShareTitle','telegramConnectFirst','copiedLink','copyLink']) {
+                delete data.clientDetail.fields[key]
+              }
+            }
+
+            if (data.publicBooking?.success) {
+              for (const key of ['optInHeading','optInSub','telegramButton','viberButton']) delete data.publicBooking.success[key]
+            }
+
+            if (data.auth?.register) {
+              delete data.auth.register.subheading
+              if (locale === 'pt') data.auth.register.submitButton = 'Criar conta'
+              if (locale === 'en') data.auth.register.submitButton = 'Create account'
+              if (locale === 'es') data.auth.register.submitButton = 'Crear cuenta'
+              if (locale === 'it') data.auth.register.submitButton = 'Crea account'
+            }
+
+            fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n')
+          }
+          NODE
+
+      - name: Remove unused legacy packages
+        run: npm uninstall isomorphic-dompurify nodemailer resend @types/nodemailer
+
+      - name: Check visible source for legacy branding
+        run: |
+          echo 'Remaining legacy terms in user-facing source (historical migrations/LICENSE excluded):'
+          grep -RniE 'Pronto|trypronto|Telegram|Viber|Meta Cloud|Resend|SMTP' app components lib messages .env.example README.md --exclude-dir=node_modules || true
+
+      - name: Build
+        env:
+          DISABLE_PWA: 'true'
+        run: npm run build
+
+      - name: Commit generated cleanup
+        run: |
+          git config user.name 'Agelya Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add package.json package-lock.json messages/pt.json messages/en.json messages/es.json messages/it.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'cleanup: remove legacy Pronto translations and packages'
+          git push origin cleanup/pronto-remnants
