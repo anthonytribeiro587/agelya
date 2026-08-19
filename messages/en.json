@@ -633,7 +633,7 @@
       "body": "Your appointment is confirmed. See you soon!",
       "bookAnother": "Book another",
       "pendingHeading": "Time reserved!",
-      "pendingBody": "We sent you a WhatsApp message. Reply YES to confirm your appointment."
+      "pendingBody": "Your appointment has been reserved. The day before your visit, we will send you a WhatsApp message to confirm it."
     },
     "loadingTimes": "Loading available times…",
     "dayClosed": "This day is outside working hours. Please choose another date.",
@@ -987,6 +987,24 @@
       "minutes": "minute(s)",
       "hours": "hour(s)",
       "days": "day(s)"
-    }
+    },
+    "summaryTitle": "Tomorrow's confirmation summary",
+    "summaryDescription": "At the end of the day, Agelya sends you a WhatsApp summary showing who confirmed tomorrow's appointments, who has not replied and who cancelled.",
+    "summaryEnable": "Send daily summary",
+    "summaryEnableHint": "Agelya sends it once a day at the time configured below.",
+    "summaryPhone": "Professional's WhatsApp",
+    "summaryPhoneHint": "Number that will receive the summary, including country and area code.",
+    "summaryTime": "Summary time",
+    "summaryTimeHint": "Uses the business's configured time zone.",
+    "summarySave": "Save summary",
+    "summarySaving": "Saving…",
+    "summarySaved": "Daily summary configured.",
+    "summaryTest": "Send test summary",
+    "summaryTesting": "Sending…",
+    "summaryTestSuccess": "Summary sent. Confirmed: {confirmed} · Waiting: {waiting} · Cancelled: {cancelled}.",
+    "summaryTestError": "Could not send the test summary.",
+    "summarySaveError": "Could not save the daily summary.",
+    "summaryLoadError": "Could not load the summary settings.",
+    "summaryLoading": "Loading daily summary…"
   }
 }

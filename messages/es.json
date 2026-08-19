@@ -633,7 +633,7 @@
       "body": "Tu cita está confirmada. ¡Hasta pronto!",
       "bookAnother": "Reservar de nuevo",
       "pendingHeading": "¡Horario reservado!",
-      "pendingBody": "Te enviamos un mensaje por WhatsApp. Responde SÍ para confirmar tu cita."
+      "pendingBody": "Tu cita fue reservada. El día anterior te enviaremos un mensaje por WhatsApp para que la confirmes."
     },
     "loadingTimes": "Cargando horarios disponibles…",
     "dayClosed": "Este día está fuera del horario de trabajo. Por favor elige otra fecha.",
@@ -987,6 +987,24 @@
       "minutes": "minuto(s)",
       "hours": "hora(s)",
       "days": "día(s)"
-    }
+    },
+    "summaryTitle": "Resumen de confirmaciones de mañana",
+    "summaryDescription": "Al final del día, Agelya te envía por WhatsApp un resumen de quién confirmó las citas del día siguiente, quién aún no respondió y quién canceló.",
+    "summaryEnable": "Enviar resumen diario",
+    "summaryEnableHint": "Agelya lo envía una vez al día en el horario definido abajo.",
+    "summaryPhone": "WhatsApp del profesional",
+    "summaryPhoneHint": "Número que recibirá el resumen, con código de país y área.",
+    "summaryTime": "Horario del resumen",
+    "summaryTimeHint": "Usa la zona horaria configurada del negocio.",
+    "summarySave": "Guardar resumen",
+    "summarySaving": "Guardando…",
+    "summarySaved": "Resumen diario configurado.",
+    "summaryTest": "Enviar resumen de prueba",
+    "summaryTesting": "Enviando…",
+    "summaryTestSuccess": "Resumen enviado. Confirmados: {confirmed} · Pendientes: {waiting} · Cancelados: {cancelled}.",
+    "summaryTestError": "No se pudo enviar el resumen de prueba.",
+    "summarySaveError": "No se pudo guardar el resumen diario.",
+    "summaryLoadError": "No se pudo cargar la configuración del resumen.",
+    "summaryLoading": "Cargando resumen diario…"
   }
 }

@@ -632,7 +632,7 @@
       "body": "Il tuo appuntamento è confermato. A presto!",
       "bookAnother": "Prenota un altro",
       "pendingHeading": "Orario riservato!",
-      "pendingBody": "Ti abbiamo inviato un messaggio WhatsApp. Rispondi SÌ per confermare l’appuntamento."
+      "pendingBody": "Il tuo appuntamento è stato prenotato. Il giorno prima ti invieremo un messaggio WhatsApp per confermarlo."
     },
     "loadingTimes": "Caricamento degli orari disponibili…",
     "dayClosed": "Questo giorno è al di fuori dell'orario di lavoro. Scegli un'altra data.",
@@ -986,6 +986,24 @@
       "minutes": "minuto/i",
       "hours": "ora/e",
       "days": "giorno/i"
-    }
+    },
+    "summaryTitle": "Riepilogo delle conferme di domani",
+    "summaryDescription": "A fine giornata Agelya ti invia su WhatsApp un riepilogo di chi ha confermato gli appuntamenti del giorno successivo, chi non ha ancora risposto e chi ha annullato.",
+    "summaryEnable": "Invia riepilogo giornaliero",
+    "summaryEnableHint": "Agelya lo invia una volta al giorno all'orario definito qui sotto.",
+    "summaryPhone": "WhatsApp del professionista",
+    "summaryPhoneHint": "Numero che riceverà il riepilogo, con prefisso internazionale e locale.",
+    "summaryTime": "Orario del riepilogo",
+    "summaryTimeHint": "Usa il fuso orario configurato per l'attività.",
+    "summarySave": "Salva riepilogo",
+    "summarySaving": "Salvataggio…",
+    "summarySaved": "Riepilogo giornaliero configurato.",
+    "summaryTest": "Invia riepilogo di prova",
+    "summaryTesting": "Invio…",
+    "summaryTestSuccess": "Riepilogo inviato. Confermati: {confirmed} · In attesa: {waiting} · Annullati: {cancelled}.",
+    "summaryTestError": "Impossibile inviare il riepilogo di prova.",
+    "summarySaveError": "Impossibile salvare il riepilogo giornaliero.",
+    "summaryLoadError": "Impossibile caricare la configurazione del riepilogo.",
+    "summaryLoading": "Caricamento riepilogo giornaliero…"
   }
 }
