@@ -27,7 +27,7 @@ export async function sendBookingCreatedAutomation(appointmentId: string) {
   const [{ data: biz }, { data: evolution }, { data: rule }] = await Promise.all([
     supabase.from('businesses').select('name, address, timezone').eq('id', appt.business_id).single(),
     supabase.from('business_evolution_config').select('api_url, api_key, instance_name, enabled').eq('business_id', appt.business_id).maybeSingle(),
-    supabase.from('business_automation_rules').select('id, enabled, message_template').eq('business_id', appt.business_id).eq('rule_key', 'confirmation_request').maybeSingle(),
+    supabase.from('business_automation_rules').select('id, enabled, message_template').eq('business_id', appt.business_id).eq('rule_key', 'booking_received').maybeSingle(),
   ])
 
   if (!rule?.enabled) return { sent: false, reason: 'automation_disabled' }
