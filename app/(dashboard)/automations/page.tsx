@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import { AutomationManager } from './automation-manager'
+import { DailySummarySettings } from './daily-summary-settings'
 
 export default async function AutomationsPage() {
   const t = await getTranslations('automations')
@@ -10,6 +11,7 @@ export default async function AutomationsPage() {
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
       </div>
+      <DailySummarySettings />
       <AutomationManager />
     </div>
   )
