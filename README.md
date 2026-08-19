@@ -14,7 +14,12 @@ Agelya é uma plataforma de agenda e gestão para profissionais de beleza, bem-e
 - WhatsApp via Evolution API;
 - automações configuráveis de confirmação, lembretes e pós-atendimento;
 - confirmação do agendamento por resposta no WhatsApp;
+- resumo diário das confirmações do dia seguinte;
 - autenticação com Supabase e isolamento de dados por negócio.
+
+## Automação de mensagens
+
+Os lembretes e resumos automáticos são processados periodicamente pelo endpoint protegido de notificações. No Supabase, as extensões `pg_cron` e `pg_net` precisam estar habilitadas para que a migration `007_cron_jobs.sql` crie o agendador `agelya-notify`.
 
 ## Fundação técnica
 
