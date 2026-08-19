@@ -19,6 +19,12 @@ function normalizedWord(value: string) {
     .trim()
 }
 
+function matchesKeyword(received: string, keywords: string[]) {
+  return keywords
+    .map(normalizedWord)
+    .some((keyword) => received === keyword || received.startsWith(`${keyword} `))
+}
+
 function extractText(payload: any) {
   const data = payload?.data ?? payload
   const message = data?.message ?? {}
@@ -83,7 +89,7 @@ export async function POST(req: NextRequest, { params }: { params: { businessId:
 
   const { data: rule } = await admin
     .from('business_automation_rules')
-    .select('enabled, requires_reply_confirmation, confirmation_keywords')
+    .select('id, enabled, requires_reply_confirmation, confirmation_keywords, decline_keywords')
     .eq('business_id', params.businessId)
     .eq('rule_key', 'confirmation_request')
     .maybeSingle()
@@ -93,9 +99,11 @@ export async function POST(req: NextRequest, { params }: { params: { businessId:
   }
 
   const received = normalizedWord(text)
-  const keywords = (rule.confirmation_keywords ?? ['sim', 'confirmo', 'confirmado']).map((v: string) => normalizedWord(v))
-  const isConfirmation = keywords.some((keyword: string) => received === keyword || received.startsWith(`${keyword} `))
-  if (!isConfirmation) return NextResponse.json({ ok: true, ignored: 'not-confirmation' })
+  const isConfirmation = matchesKeyword(received, rule.confirmation_keywords ?? ['sim', 'confirmo', 'confirmado'])
+  const isDecline = matchesKeyword(received, rule.decline_keywords ?? ['nao', 'não', 'cancelar', 'cancelo', 'desmarcar'])
+  if (!isConfirmation && !isDecline) {
+    return NextResponse.json({ ok: true, ignored: 'not-confirmation-answer' })
+  }
 
   const { data: clients } = await admin
     .from('clients')
@@ -112,43 +120,69 @@ export async function POST(req: NextRequest, { params }: { params: { businessId:
 
   if (!client) return NextResponse.json({ ok: true, ignored: 'client-not-found' })
 
-  const now = new Date().toISOString()
-  const horizon = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-  const { data: appointment } = await admin
+  // A resposta só pode alterar um horário para o qual a Agelya realmente enviou
+  // a solicitação de confirmação. Isso evita que um "SIM" solto confirme outro horário.
+  const nowIso = new Date().toISOString()
+  const horizonIso = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+  const { data: candidates } = await admin
     .from('appointments')
-    .select('id, starts_at, client_confirmed_at')
+    .select('id, starts_at, status, client_confirmed_at, client_declined_at')
     .eq('business_id', params.businessId)
     .eq('client_id', client.id)
     .in('status', ['pending', 'confirmed'])
-    .gte('starts_at', now)
-    .lte('starts_at', horizon)
+    .gte('starts_at', nowIso)
+    .lte('starts_at', horizonIso)
     .order('starts_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
+    .limit(5)
 
-  if (!appointment || appointment.client_confirmed_at) {
+  let appointment: any = null
+  for (const candidate of candidates ?? []) {
+    const { data: sentRequest } = await admin
+      .from('notification_log')
+      .select('id')
+      .eq('business_id', params.businessId)
+      .eq('ref_id', candidate.id)
+      .eq('type', `automation_${rule.id}`)
+      .eq('channel', 'whatsapp')
+      .maybeSingle()
+    if (sentRequest) {
+      appointment = candidate
+      break
+    }
+  }
+
+  if (!appointment || appointment.client_confirmed_at || appointment.client_declined_at) {
     return NextResponse.json({ ok: true, ignored: 'appointment-not-found' })
   }
 
-  const confirmedAt = new Date().toISOString()
+  const answeredAt = new Date().toISOString()
+  const update = isConfirmation
+    ? {
+        status: 'confirmed',
+        client_confirmed_at: answeredAt,
+        client_confirmation_text: text.slice(0, 500),
+        updated_at: answeredAt,
+      }
+    : {
+        status: 'cancelled',
+        client_declined_at: answeredAt,
+        client_confirmation_text: text.slice(0, 500),
+        updated_at: answeredAt,
+      }
+
   const { error: updateError } = await admin
     .from('appointments')
-    .update({
-      status: 'confirmed',
-      client_confirmed_at: confirmedAt,
-      client_confirmation_text: text.slice(0, 500),
-      updated_at: confirmedAt,
-    })
+    .update(update)
     .eq('id', appointment.id)
     .eq('business_id', params.businessId)
-    .is('client_confirmed_at', null)
 
   if (updateError) return NextResponse.json({ error: 'update_failed' }, { status: 500 })
 
+  const logType = isConfirmation ? 'confirmation_received' : 'confirmation_declined'
   const { error: logError } = await admin.from('notification_log').insert({
     business_id: params.businessId,
     ref_id: appointment.id,
-    type: 'confirmation_received',
+    type: logType,
     channel: 'whatsapp',
   })
   if (logError && logError.code !== '23505') {
@@ -160,12 +194,14 @@ export async function POST(req: NextRequest, { params }: { params: { businessId:
       await sendEvolutionText(
         { apiUrl: config.api_url, apiKey: config.api_key, instance: config.instance_name },
         phone,
-        `✅ Perfeito, ${client.name}! Seu horário está confirmado. Obrigado pela resposta!`
+        isConfirmation
+          ? `✅ Perfeito, ${client.name}! Seu horário está confirmado. Obrigado pela resposta!`
+          : `Certo, ${client.name}. Seu horário foi cancelado. Se quiser remarcar, é só falar com a gente. 💚`
       )
     } catch (err) {
-      console.error('[evolution/webhook] confirmation acknowledgement:', err)
+      console.error('[evolution/webhook] answer acknowledgement:', err)
     }
   }
 
-  return NextResponse.json({ ok: true, confirmed: true })
+  return NextResponse.json({ ok: true, confirmed: isConfirmation, cancelled: isDecline })
 }
