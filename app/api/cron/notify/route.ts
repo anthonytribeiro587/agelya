@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { renderAutomationMessage } from '@/lib/automation-message'
 import { sendEvolutionText } from '@/lib/evolution'
+import { sendDueDailyConfirmationSummaries } from '@/lib/daily-confirmation-summary'
 
 type Rule = {
   id: string
@@ -258,6 +259,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const summaries = await sendDueDailyConfirmationSummaries(now)
+
   return NextResponse.json({
     ok: true,
     checkedAt: now.toISOString(),
@@ -265,5 +268,6 @@ export async function GET(req: NextRequest) {
     sent: sent.length,
     failures: failures.length,
     results: sent,
+    summaries,
   })
 }
