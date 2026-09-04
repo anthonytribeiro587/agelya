@@ -12,11 +12,17 @@ export default async function LoginPage({
   const googleAuthEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true'
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-      <h1 className="text-xl font-semibold text-gray-900 mb-6">{t('heading')}</h1>
+    <div className="agelya-auth-card rounded-[28px] p-6 sm:p-8">
+      <div className="mb-7">
+        <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#879188]">Bem-vindo de volta</p>
+        <h1 className="agelya-serif mt-2 text-[34px] leading-none font-semibold tracking-[-.035em] text-[#17452f]">
+          {t('heading')}
+        </h1>
+        <div className="mt-4 h-px w-16 bg-gradient-to-r from-[#b79a67] to-transparent" />
+      </div>
 
       {searchParams.error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
+        <div className="bg-[#f8e8e5] border border-[#ebcbc7] text-[#8a4842] text-sm rounded-xl px-4 py-3 mb-4">
           {searchParams.error}
         </div>
       )}
@@ -27,7 +33,7 @@ export default async function LoginPage({
             <input type="hidden" name="redirectTo" value={searchParams.redirectTo ?? '/dashboard'} />
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors mb-4"
+              className="w-full flex items-center justify-center gap-2 border border-[#d9cec1] bg-[#fffdf9] rounded-xl px-4 py-3 text-sm font-semibold text-[#425d50] hover:bg-[#f3efe7] transition-colors mb-4"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -39,12 +45,12 @@ export default async function LoginPage({
             </button>
           </form>
 
-          <div className="relative my-4">
+          <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
+              <div className="w-full border-t border-[#e5dbcf]" />
             </div>
-            <div className="relative flex justify-center text-xs text-gray-400 uppercase">
-              <span className="bg-white px-2">{t('divider')}</span>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-[.16em] text-[#a09f98]">
+              <span className="bg-[#fffdf9] px-3">{t('divider')}</span>
             </div>
           </div>
         </>
@@ -62,9 +68,9 @@ export default async function LoginPage({
         }}
       />
 
-      <p className="text-sm text-gray-500 text-center mt-6">
+      <p className="text-sm text-[#7e8881] text-center mt-6">
         {t('noAccount')}{' '}
-        <Link href="/register" className="text-blue-600 hover:underline">Criar conta</Link>
+        <Link href="/register" className="font-semibold text-[#2b6848] hover:underline">Criar conta</Link>
       </p>
     </div>
   )
