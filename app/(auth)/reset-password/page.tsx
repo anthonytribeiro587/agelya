@@ -1,5 +1,6 @@
 import { updatePassword } from './actions'
 import { PasswordInput } from '@/components/ui/password-input'
+import { Button } from '@/components/ui/button'
 
 export default function ResetPasswordPage({
   searchParams,
@@ -7,11 +8,12 @@ export default function ResetPasswordPage({
   searchParams: { error?: string }
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-      <h1 className="text-xl font-semibold text-gray-900 mb-6">Set new password</h1>
+    <div className="agelya-auth-card rounded-[28px] p-6 sm:p-8">
+      <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#879188]">Segurança</p>
+      <h1 className="agelya-serif mt-2 mb-7 text-[34px] leading-none font-semibold tracking-[-.035em] text-[#17452f]">Set new password</h1>
 
       {searchParams.error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
+        <div className="bg-[#f8e8e5] border border-[#ebcbc7] text-[#8a4842] text-sm rounded-xl px-4 py-3 mb-4">
           {searchParams.error}
         </div>
       )}
@@ -33,12 +35,7 @@ export default function ResetPasswordPage({
           required
           autoComplete="new-password"
         />
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-blue-700 transition-colors"
-        >
-          Update password
-        </button>
+        <Button size="lg" type="submit" className="w-full">Update password</Button>
       </form>
     </div>
   )

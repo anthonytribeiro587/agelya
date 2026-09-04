@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CrmImportButton } from '@/components/clients/crm-import-button'
 import { formatCurrency, formatInBusinessTimezone } from '@/lib/utils'
-import { Plus, Search, Phone, Mail } from 'lucide-react'
+import { Plus, Search, Phone, Mail, Users } from 'lucide-react'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 
@@ -37,7 +37,6 @@ export default async function CRMPage({
 
   const { data: clients } = await query
 
-  // Compute visits, spent, last visit, and last service name live from transactions
   const clientIds = (clients ?? []).map((c) => c.id)
   const statsMap: Record<string, { total_visits: number; total_spent: number; last_visit_at: string | null; lastService: string | null }> = {}
   if (clientIds.length > 0) {
@@ -78,23 +77,25 @@ export default async function CRMPage({
           </div>
         }
       />
-      <main className="p-6">
+      <main className="p-4 sm:p-6">
         <div className="mb-4 relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8e9992]" />
           <form>
             <input name="q" defaultValue={searchParams.q} type="search"
               placeholder={t('searchPlaceholder')}
-              className="w-full max-w-sm pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+              className="w-full max-w-sm pl-9 pr-4 py-2.5 border border-[#ded4c8] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7d9d84]/25 bg-[#fffdf9]" />
           </form>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-[22px] border border-gray-200 overflow-hidden shadow-sm">
           {clients?.length === 0 ? (
             <div className="py-16 text-center text-gray-500">
-              <div className="text-4xl mb-3">{t('empty.icon')}</div>
-              <div className="font-medium">{t('empty.heading')}</div>
-              <div className="text-sm mt-1">
-                <Link href="/crm/new" className="text-blue-600 hover:underline">{t('empty.action')}</Link>
+              <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-[20px] bg-[#dfe8db] text-[#2f6245]">
+                <Users className="h-6 w-6" />
+              </div>
+              <div className="agelya-serif text-xl font-semibold text-[#244a37]">{t('empty.heading')}</div>
+              <div className="text-sm mt-2">
+                <Link href="/crm/new" className="font-semibold text-[#2f6848] hover:underline">{t('empty.action')}</Link>
               </div>
             </div>
           ) : (
@@ -114,7 +115,7 @@ export default async function CRMPage({
                 {clients?.map((c) => (
                   <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0">
                     <td className="px-4 py-3">
-                      <Link href={`/crm/${c.id}`} className="font-medium text-gray-900 hover:text-blue-600">{c.name}</Link>
+                      <Link href={`/crm/${c.id}`} className="font-semibold text-[#244637] hover:text-[#2f6848]">{c.name}</Link>
                     </td>
                     <td className="px-4 py-3 text-gray-500">
                       <div className="flex flex-col gap-0.5">

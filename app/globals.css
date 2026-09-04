@@ -2,73 +2,202 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Language switcher — visible on all screen sizes */
-.lang-switcher {
-  display: inline;
-}
-
+.lang-switcher { display: inline; }
 @media (display-mode: standalone) {
-  .lang-switcher {
-    display: inline-flex !important;
-  }
+  .lang-switcher { display: inline-flex !important; }
 }
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --background: 38 31% 96%;
+    --foreground: 149 39% 17%;
+    --card: 40 38% 99%;
+    --card-foreground: 149 39% 17%;
+    --popover: 40 38% 99%;
+    --popover-foreground: 149 39% 17%;
+    --primary: 145 48% 27%;
+    --primary-foreground: 42 44% 97%;
+    --secondary: 93 20% 91%;
+    --secondary-foreground: 145 38% 23%;
+    --muted: 36 24% 92%;
+    --muted-foreground: 145 9% 43%;
+    --accent: 93 24% 90%;
+    --accent-foreground: 145 38% 23%;
+    --destructive: 0 63% 48%;
+    --destructive-foreground: 42 44% 97%;
+    --border: 34 24% 86%;
+    --input: 34 24% 84%;
+    --ring: 145 48% 31%;
+    --radius: 1rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: 146 35% 10%;
+    --foreground: 42 44% 97%;
+    --card: 146 30% 13%;
+    --card-foreground: 42 44% 97%;
+    --popover: 146 30% 13%;
+    --popover-foreground: 42 44% 97%;
+    --primary: 101 30% 70%;
+    --primary-foreground: 146 40% 12%;
+    --secondary: 145 19% 20%;
+    --secondary-foreground: 42 44% 97%;
+    --muted: 145 19% 20%;
+    --muted-foreground: 93 12% 68%;
+    --accent: 145 19% 20%;
+    --accent-foreground: 42 44% 97%;
+    --destructive: 0 55% 38%;
+    --destructive-foreground: 42 44% 97%;
+    --border: 145 17% 24%;
+    --input: 145 17% 24%;
+    --ring: 101 30% 70%;
   }
-}
 
-@layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
+
+  html { background: #f5efe6; }
+
   body {
     @apply bg-background text-foreground;
+    color: #213d31;
+    background:
+      radial-gradient(circle at 86% 8%, rgba(203, 215, 191, .34), transparent 26rem),
+      radial-gradient(circle at 6% 96%, rgba(222, 204, 174, .18), transparent 24rem),
+      #f5efe6;
+  }
+
+  ::selection {
+    background: #cddbc9;
+    color: #163d2b;
   }
 }
 
+.agelya-serif {
+  font-family: Georgia, 'Times New Roman', ui-serif, serif;
+}
+
+.agelya-app {
+  position: relative;
+  isolation: isolate;
+  color: #203c31;
+  background:
+    radial-gradient(circle at 92% -8%, rgba(199, 213, 188, .42), transparent 29rem),
+    radial-gradient(circle at 8% 108%, rgba(222, 206, 178, .20), transparent 28rem),
+    #f5efe6;
+}
+
+.agelya-app::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  width: 380px;
+  height: 380px;
+  right: -170px;
+  top: 90px;
+  border: 1px solid rgba(91, 122, 99, .12);
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 52px rgba(255,255,255,.18),
+    0 0 0 104px rgba(255,255,255,.10);
+}
+
+.agelya-content {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+.agelya-app .bg-gray-50 { background-color: #f7f2ea !important; }
+.agelya-app .bg-white { background-color: rgba(255, 253, 249, .95) !important; }
+.agelya-app .bg-gray-100 { background-color: #eee7dc !important; }
+.agelya-app .border-gray-100 { border-color: #eee6dc !important; }
+.agelya-app .border-gray-200 { border-color: #e3d9cd !important; }
+.agelya-app .border-gray-300 { border-color: #d6c9bb !important; }
+.agelya-app .text-gray-900 { color: #173d2d !important; }
+.agelya-app .text-gray-800 { color: #244739 !important; }
+.agelya-app .text-gray-700 { color: #3e5c50 !important; }
+.agelya-app .text-gray-600 { color: #5b7067 !important; }
+.agelya-app .text-gray-500 { color: #768179 !important; }
+.agelya-app .text-gray-400 { color: #a09f98 !important; }
+.agelya-app .text-blue-600 { color: #2b6848 !important; }
+.agelya-app .text-green-600 { color: #2b6848 !important; }
+.agelya-app .bg-blue-50 { background-color: #eef4ec !important; }
+.agelya-app .bg-green-50 { background-color: #eef4ec !important; }
+.agelya-app .border-green-100 { border-color: #dbe7d8 !important; }
+.agelya-app .border-green-200 { border-color: #ccdccc !important; }
+.agelya-app .shadow-sm { box-shadow: 0 10px 28px rgba(45, 65, 53, .055) !important; }
+
+.agelya-app input:not([type='checkbox']):not([type='radio']),
+.agelya-app textarea,
+.agelya-app select {
+  border-color: #e0d6ca !important;
+  background: rgba(255, 254, 251, .96);
+  color: #244539;
+  border-radius: 12px !important;
+}
+
+.agelya-app input:not([type='checkbox']):not([type='radio']):focus,
+.agelya-app textarea:focus,
+.agelya-app select:focus {
+  border-color: #6f9279 !important;
+  box-shadow: 0 0 0 3px rgba(72, 117, 85, .12) !important;
+  outline: none !important;
+}
+
+.agelya-auth {
+  min-height: 100vh;
+  color: #203c31;
+  background:
+    radial-gradient(circle at 82% 14%, rgba(190, 210, 185, .44), transparent 25rem),
+    radial-gradient(circle at 12% 92%, rgba(220, 200, 169, .18), transparent 24rem),
+    #f5efe6;
+}
+
+.agelya-auth-card {
+  border: 1px solid rgba(208, 194, 178, .72);
+  background: rgba(255, 253, 249, .94);
+  box-shadow: 0 28px 80px rgba(39, 63, 49, .10);
+  backdrop-filter: blur(10px);
+}
+
+.wellness-card {
+  border: 1px solid rgba(219, 207, 193, .88);
+  background: rgba(255, 253, 249, .94);
+  box-shadow: 0 14px 40px rgba(44, 65, 53, .06);
+  border-radius: 22px;
+}
+
+.wellness-dark-card {
+  color: #f7f4ec;
+  border: 1px solid rgba(255,255,255,.1);
+  background:
+    radial-gradient(circle at 85% 20%, rgba(151, 181, 148, .18), transparent 12rem),
+    linear-gradient(135deg, #285c42 0%, #17412f 100%);
+  box-shadow: 0 20px 50px rgba(25, 64, 45, .18);
+  border-radius: 24px;
+}
+
+.wellness-chip {
+  border: 1px solid #d9e2d5;
+  background: #eff5ec;
+  color: #315c45;
+  border-radius: 999px;
+}
+
+.botanical-line {
+  position: relative;
+}
+
+.botanical-line::after {
+  content: '';
+  display: inline-block;
+  width: 56px;
+  height: 1px;
+  margin-left: 12px;
+  vertical-align: middle;
+  background: linear-gradient(90deg, #c2a46f, transparent);
+}
 
 /* Public booking — international WhatsApp input */
 .agelya-phone-input {

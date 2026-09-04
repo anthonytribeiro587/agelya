@@ -75,13 +75,13 @@ export function LoginForm({ redirectTo, labels }: LoginFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-[#f8e8e5] border border-[#ebcbc7] text-[#8a4842] text-sm rounded-xl px-4 py-3">
           {error}
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
+        <label className="block text-sm font-semibold text-[#53685d] mb-1.5" htmlFor="email">
           {labels.emailLabel}
         </label>
         <input
@@ -92,7 +92,7 @@ export function LoginForm({ redirectTo, labels }: LoginFormProps) {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full border border-[#d9cec1] bg-[#fffdf9] rounded-xl px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#7d9d84]/30 focus:border-[#91aa96]"
           placeholder={labels.emailPlaceholder}
         />
       </div>
@@ -108,8 +108,8 @@ export function LoginForm({ redirectTo, labels }: LoginFormProps) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <div className="text-right mt-1">
-          <a href="/forgot-password" className="text-xs text-blue-600 hover:underline">
+        <div className="text-right mt-1.5">
+          <a href="/forgot-password" className="text-xs font-semibold text-[#3b6d50] hover:underline">
             {labels.forgotPassword}
           </a>
         </div>
@@ -118,7 +118,7 @@ export function LoginForm({ redirectTo, labels }: LoginFormProps) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-blue-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        className="w-full h-12 bg-[#245b3e] text-[#fbf8f0] rounded-2xl px-4 text-sm font-semibold shadow-[0_10px_24px_rgba(36,91,62,.16)] hover:bg-[#1e4f35] hover:-translate-y-px transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
       >
         {loading ? 'Entrando…' : labels.submitButton}
       </button>

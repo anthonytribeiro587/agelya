@@ -139,123 +139,77 @@ export function OnboardingChecklist({ businessId, enabledModules }: Props) {
 
   const items: ChecklistItem[] = isRetail
     ? [
-        {
-          key: 'profile',
-          label: t('step1'),
-          done: retailSteps.profileCreated,
-          description: null,
-          action: null,
-        },
-        {
-          key: 'product',
-          label: t('stepProduct'),
-          done: retailSteps.hasProduct,
-          description: null,
-          action: { label: t('addProduct'), href: '/inventory/new' },
-        },
+        { key: 'profile', label: t('step1'), done: retailSteps.profileCreated, description: null, action: null },
+        { key: 'product', label: t('stepProduct'), done: retailSteps.hasProduct, description: null, action: { label: t('addProduct'), href: '/inventory/new' } },
       ]
     : [
-        {
-          key: 'profile',
-          label: t('step1'),
-          done: steps.profileCreated,
-          description: null,
-          action: null,
-        },
-        {
-          key: 'modules',
-          label: t('stepModules'),
-          done: steps.modulesConfigured,
-          description: null,
-          action: { label: t('configure'), href: '/settings?tab=modules' },
-        },
-        {
-          key: 'service',
-          label: t('step2'),
-          done: steps.hasService,
-          description: null,
-          action: { label: t('addService'), href: '/settings?tab=services' },
-        },
-        {
-          key: 'client',
-          label: t('step3'),
-          done: steps.hasClient,
-          description: null,
-          action: { label: t('addClient'), href: '/crm/new' },
-        },
-        {
-          key: 'booking',
-          label: t('step4'),
-          done: steps.hasBooking,
-          description: null,
-          action: { label: t('openCalendar'), href: '/booking' },
-        },
-        {
-          key: 'notifications',
-          label: t('step5'),
-          done: steps.hasNotification,
-          description: t('step5sub'),
-          action: { label: t('connect'), href: '/settings?tab=notifications' },
-        },
+        { key: 'profile', label: t('step1'), done: steps.profileCreated, description: null, action: null },
+        { key: 'modules', label: t('stepModules'), done: steps.modulesConfigured, description: null, action: { label: t('configure'), href: '/settings?tab=modules' } },
+        { key: 'service', label: t('step2'), done: steps.hasService, description: null, action: { label: t('addService'), href: '/settings?tab=services' } },
+        { key: 'client', label: t('step3'), done: steps.hasClient, description: null, action: { label: t('addClient'), href: '/crm/new' } },
+        { key: 'booking', label: t('step4'), done: steps.hasBooking, description: null, action: { label: t('openCalendar'), href: '/booking' } },
+        { key: 'notifications', label: t('step5'), done: steps.hasNotification, description: t('step5sub'), action: { label: t('connect'), href: '/settings?tab=notifications' } },
       ]
 
   const completeCount = items.filter((i) => i.done).length
   const totalCount = items.length
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 relative">
+    <div className="wellness-card p-5 sm:p-6 relative overflow-hidden">
+      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full border border-[#dbe4d8]" />
       <button
         onClick={dismiss}
-        className="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-xl leading-none"
+        className="absolute top-3 right-4 text-[#9b9d97] hover:text-[#596c61] text-xl leading-none"
         aria-label="Dismiss checklist"
       >
         ×
       </button>
 
       {allDone ? (
-        <div className="py-2 text-center">
-          <p className="text-lg font-semibold text-gray-900">{t('allDone')}</p>
+        <div className="py-3 text-center">
+          <p className="agelya-serif text-2xl font-semibold text-[#1f5138]">{t('allDone')}</p>
         </div>
       ) : (
         <>
-          <h3 className="font-semibold text-gray-900 text-base pr-8">{t('title')}</h3>
-          <p className="text-sm text-gray-500 mt-0.5">{t('progress', { done: completeCount, total: totalCount })}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-[#89938c]">Configuração inicial</p>
+          <h3 className="agelya-serif mt-1 text-2xl font-semibold text-[#1c4934] pr-8">{t('title')}</h3>
+          <p className="text-sm text-[#7a837d] mt-1">{t('progress', { done: completeCount, total: totalCount })}</p>
 
-          <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="mt-4 h-1.5 bg-[#ece6dc] rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${(completeCount / totalCount) * 100}%`, background: '#16a34a' }}
+              className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-[#6f9279] to-[#2b6244]"
+              style={{ width: `${(completeCount / totalCount) * 100}%` }}
             />
           </div>
 
-          <ul className="mt-4 space-y-3">
+          <ul className="mt-5 grid sm:grid-cols-2 gap-3">
             {items.map((item) => (
-              <li key={item.key} className="flex items-start gap-3">
+              <li key={item.key} className={`flex items-start gap-3 rounded-2xl border p-3.5 ${item.done ? 'border-[#e6dfd5] bg-[#f7f3ec]/70' : 'border-[#dfe1d5] bg-[#fbfaf5]'}`}>
                 {item.done ? (
-                  <span className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
-                    <svg className="w-3 h-3 text-green-600" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <span className="w-6 h-6 rounded-full bg-[#dce8db] flex items-center justify-center shrink-0 mt-0.5">
+                    <svg className="w-3.5 h-3.5 text-[#315f44]" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                       <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </span>
                 ) : (
-                  <span className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0 mt-0.5" />
+                  <span className="w-6 h-6 rounded-full border-2 border-[#c8cfc5] shrink-0 mt-0.5" />
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-3">
-                    <span className={`text-sm text-gray-900 ${item.done ? 'opacity-50' : 'font-semibold'}`}>
+                    <span className={`text-sm text-[#365347] ${item.done ? 'opacity-55' : 'font-semibold'}`}>
                       {item.label}
                     </span>
                     {!item.done && item.action && (
                       <Link
                         href={item.action.href}
-                        className="shrink-0 text-xs px-2.5 py-1 rounded-md border border-green-600 text-green-700 font-medium hover:bg-green-50 transition-colors"
+                        className="shrink-0 text-[11px] px-2.5 py-1 rounded-full border border-[#9eb4a1] text-[#315f44] font-semibold hover:bg-[#edf4eb] transition-colors"
                       >
                         {item.action.label}
                       </Link>
                     )}
                   </div>
                   {!item.done && item.description && (
-                    <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+                    <p className="text-xs text-[#7c8780] mt-1 leading-5">{item.description}</p>
                   )}
                 </div>
               </li>
