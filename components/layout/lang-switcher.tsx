@@ -29,17 +29,17 @@ export function LangSwitcher() {
 
   return (
     <div className="flex items-center gap-1 px-3 py-2">
-      <Globe className="w-3.5 h-3.5 text-white/30 shrink-0 mr-0.5" />
+      <Globe className="w-3.5 h-3.5 text-[#92a098] shrink-0 mr-0.5" />
       {LOCALES.map(({ code, label }) => (
         <button
           key={code}
           onClick={() => switchLocale(code)}
           disabled={loading}
           className={cn(
-            'text-xs font-medium px-1.5 py-0.5 rounded transition-colors',
+            'text-[11px] font-semibold px-1.5 py-1 rounded-lg transition-colors',
             code === locale
-              ? 'text-white bg-white/15'
-              : 'text-white/40 hover:text-white/70'
+              ? 'text-[#245b3e] bg-[#dfe8db]'
+              : 'text-[#98a098] hover:text-[#4f685b] hover:bg-white/60'
           )}
         >
           {label}
