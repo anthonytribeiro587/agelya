@@ -30,7 +30,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
 
   const { data: appointments } = await supabase
     .from('appointments')
-    .select('id, starts_at, ends_at, status, price, services(name), employees(name)')
+    .select('id, starts_at, ends_at, status, price, services(id, name), employees(id, name)')
     .eq('client_id', client.id)
     .eq('business_id', business.id)
     .order('starts_at', { ascending: false })
@@ -47,6 +47,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
         }
       />
       <ClientDetailView
+        businessId={business.id}
         client={client}
         appointments={appointments ?? []}
         currency={business.currency}
