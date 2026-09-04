@@ -1,0 +1,40 @@
+name: Redesign visual preview
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'e2e/redesign-visual-preview.mjs'
+      - '.github/workflows/redesign-visual-preview.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install chromium
+      - name: Capture redesign preview
+        env:
+          PREVIEW_BASE_URL: https://agelya-reiyin9p3-anthontr587s-projects.vercel.app
+          PREVIEW_SHARE_URL: https://agelya-reiyin9p3-anthontr587s-projects.vercel.app/?_vercel_share=NP12ABzmP3sFop14z0kBo21IH5TZh67k
+        run: node e2e/redesign-visual-preview.mjs
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: redesign-visual-preview
+          path: visual-artifacts/
+          retention-days: 3
+          if-no-files-found: ignore
