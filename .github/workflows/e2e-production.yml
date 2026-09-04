@@ -1,0 +1,44 @@
+name: Production massotherapy E2E
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'e2e/production-massotherapy.mjs'
+      - '.github/workflows/e2e-production.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install app dependencies
+        run: npm ci
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run production massotherapy E2E
+        env:
+          E2E_BASE_URL: https://agelya.vercel.app
+        run: |
+          mkdir -p e2e-artifacts
+          node e2e/production-massotherapy.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-massotherapy-e2e
+          path: e2e-artifacts/
+          if-no-files-found: ignore
+          retention-days: 3
