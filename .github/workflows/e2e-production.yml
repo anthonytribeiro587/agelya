@@ -29,7 +29,7 @@ jobs:
       - name: Install Playwright
         run: |
           npm install --no-save --ignore-scripts playwright@1.55.0
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
       - name: Run production massotherapy E2E
         env:
           E2E_BASE_URL: https://agelya.vercel.app
