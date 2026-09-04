@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
+import { WellnessPanel } from './wellness-panel'
 
 interface Appointment {
   id: string
@@ -17,8 +18,8 @@ interface Appointment {
   ends_at: string
   status: string
   price: number | null
-  services: { name: string } | null
-  employees: { name: string } | null
+  services: { id: string; name: string } | null
+  employees: { id: string; name: string } | null
 }
 
 interface Client {
@@ -37,6 +38,7 @@ interface Client {
 }
 
 interface Props {
+  businessId: string
   client: Client
   appointments: Appointment[]
   currency: string
@@ -65,7 +67,7 @@ function birthdayIsValid(birthday: string) {
   return !Number.isNaN(date.getTime()) && date.getFullYear() >= 1900 && date <= new Date()
 }
 
-export function ClientDetailView({ client: initial, appointments, currency, timezone }: Props) {
+export function ClientDetailView({ businessId, client: initial, appointments, currency, timezone }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('clientDetail')
@@ -246,6 +248,14 @@ export function ClientDetailView({ client: initial, appointments, currency, time
           </CardContent>
         </Card>
       </div>
+
+      <WellnessPanel
+        businessId={businessId}
+        clientId={client.id}
+        appointments={appointments}
+        currency={currency}
+        timezone={timezone}
+      />
 
       <style jsx>{`
         :global(.field-input) {
